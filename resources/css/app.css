@@ -1,0 +1,22 @@
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source '../**/*.blade.php';
+@source '../**/*.js';
+
+/* Mode gelap lewat class "dark" di <html> (tombolnya dibuat di Phase 2) */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+    --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+
+    /* Palet dari PRD */
+    --color-sun: #F6C945;
+    --color-sun-light: #FFF4C2;
+    --color-wood: #6B3F2A;
+    --color-wood-dark: #38251D;
+    --color-cream: #FFFCF4;
+    --color-ink: #292524;
+}
+
