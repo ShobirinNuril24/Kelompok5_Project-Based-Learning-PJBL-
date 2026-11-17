@@ -20,3 +20,32 @@
     --color-ink: #292524;
 }
 
+/* Warna yang otomatis berganti saat mode gelap */
+:root {
+    --latar: #FFFCF4;
+    --kartu: #FFFFFF;
+    --teks: #292524;
+    --teks-lemah: #78716C;
+    --garis: #E7E5E4;
+}
+.dark {
+    --latar: #1C1917;
+    --kartu: #292524;
+    --teks: #FAFAF9;
+    --teks-lemah: #A8A29E;
+    --garis: #44403C;
+}
+
+@theme inline {
+    --color-latar: var(--latar);
+    --color-kartu: var(--kartu);
+    --color-teks: var(--teks);
+    --color-teks-lemah: var(--teks-lemah);
+    --color-garis: var(--garis);
+}
+
+@layer base {
+    html { scroll-behavior: smooth; }
+    body { @apply bg-latar font-sans text-teks antialiased; }
+    [x-cloak] { display: none !important; }
+}
