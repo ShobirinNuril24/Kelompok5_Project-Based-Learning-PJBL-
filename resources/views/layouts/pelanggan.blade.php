@@ -36,6 +36,7 @@
     @include('partials.header')
 
     <main id="konten" class="flex-1">
+        @include('partials.pesan')
         @yield('konten')
     </main>
 

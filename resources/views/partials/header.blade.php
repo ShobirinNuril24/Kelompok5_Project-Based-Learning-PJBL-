@@ -33,10 +33,13 @@
                 <x-icon nama="sun" x-show="gelap" x-cloak />
             </button>
 
-            {{-- Keranjang (jumlah item ditambahkan di Phase 2) --}}
-            <a href="{{ route('keranjang.index') }}" aria-label="Keranjang belanja"
+            {{-- Keranjang dengan jumlah item --}}
+            <a href="{{ route('keranjang.index') }}" aria-label="Keranjang belanja, {{ $jumlahKeranjang }} item"
                class="relative grid size-10 place-items-center rounded-lg border border-garis hover:bg-sun/25 focus:outline-none focus-visible:ring-2 focus-visible:ring-sun">
                 <x-icon nama="cart" />
+                @if ($jumlahKeranjang > 0)
+                    <span class="absolute -right-1.5 -top-1.5 grid min-w-5 place-items-center rounded-full bg-sun px-1 text-xs font-bold text-ink">{{ $jumlahKeranjang }}</span>
+                @endif
             </a>
 
             <x-button varian="wa" :href="$toko->waUrl('Halo '.$toko->nama_toko.', saya ingin bertanya.')" class="hidden lg:inline-flex">
