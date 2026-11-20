@@ -1,13 +1,16 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Admin\LoginController;
 use App\Http\Controllers\BerandaController;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\KeranjangController;
 use App\Http\Controllers\PesananController;
 use App\Http\Controllers\ProdukController;
+use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\LoginController;
+use App\Http\Controllers\Admin\PesananController as AdminPesananController;
 
+#User Routes
 Route::get('/', BerandaController::class)->name('beranda');
 Route::get('/produk', [ProdukController::class, 'index'])->name('produk.index');
 Route::get('/produk/{produk:slug}', [ProdukController::class, 'show'])->name('produk.show');
@@ -27,12 +30,24 @@ Route::post('/pesanan/{order:public_token}/batal', [PesananController::class, 'b
 
 Route::view('/tentang', 'pelanggan.tentang')->name('tentang');
 
+#Admin Routes
 Route::middleware('guest')->prefix('admin')->group(function () {
     Route::get('login', [LoginController::class, 'create'])->name('login');
-    Route::post('login', [LoginController::class, 'store'])->middleware('throttle:5,1')->name('login.store');
+    Route::post('login', [LoginController::class, 'store'])->name('login.store');
 });
 
 Route::middleware('auth')->prefix('admin')->group(function () {
-    Route::view('/', 'admin.dashboard')->name('admin.dashboard');
     Route::post('logout', [LoginController::class, 'destroy'])->name('logout');
+
+    Route::name('admin.')->group(function () {
+        Route::get('/', DashboardController::class)->name('dashboard');
+        Route::get('pesanan', [AdminPesananController::class, 'index'])->name('pesanan.index');
+        Route::get('pesanan/{order}', [AdminPesananController::class, 'show'])->name('pesanan.show');
+        Route::patch('pesanan/{order}/status', [AdminPesananController::class, 'ubahStatus'])->name('pesanan.status');
+        Route::patch('pesanan/{order}/pembayaran', [AdminPesananController::class, 'ubahPembayaran'])->name('pesanan.pembayaran');
+        Route::post('pesanan/{order}/minta-pembayaran', [AdminPesananController::class, 'mintaPembayaran'])->name('pesanan.minta-pembayaran');
+        Route::patch('pesanan/{order}/catatan', [AdminPesananController::class, 'ubahCatatan'])->name('pesanan.catatan');
+        Route::get('pesanan/{order}/item', [AdminPesananController::class, 'editItem'])->name('pesanan.item');
+        Route::put('pesanan/{order}/item', [AdminPesananController::class, 'updateItem'])->name('pesanan.item.update');
+    });
 });

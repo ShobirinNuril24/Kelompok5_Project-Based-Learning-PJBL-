@@ -17,6 +17,12 @@
                 </div>
             @endif
 
+            @if ($order->status_pesanan === 'Kedaluwarsa')
+                <div role="alert" class="rounded-2xl bg-red-100 p-5 text-sm font-semibold text-red-800 dark:bg-red-900/40 dark:text-red-300">
+                    Pesanan ini kedaluwarsa karena pembayaran tidak diterima sebelum batas waktu. Silakan buat pesanan baru.
+                </div>
+            @endif
+
             <div class="rounded-2xl border border-garis bg-kartu p-5">
                 <p class="text-sm text-teks-lemah">Nomor pesanan</p>
                 <h1 class="text-2xl font-extrabold tracking-wide">{{ $order->nomor_pesanan }}</h1>
@@ -63,26 +69,35 @@
                 </dl>
             </div>
 
-            {{-- Info pembayaran untuk Transfer/QRIS --}}
-            @if ($order->metode_pembayaran === 'Transfer/QRIS' && $order->status_pembayaran !== 'Lunas' && $order->status_pesanan !== 'Dibatalkan')
+            {{-- Pembayaran Transfer/QRIS: hanya ditampilkan saat pesanan menunggu pembayaran --}}
+            @if ($order->status_pesanan === 'Menunggu Pembayaran')
                 <div class="rounded-2xl border border-sun bg-sun/10 p-5 text-sm">
-                    <h2 class="font-extrabold">Pembayaran Transfer/QRIS</h2>
+                    <h2 class="font-extrabold">Selesaikan pembayaran</h2>
+                    @if ($order->batas_bayar_at)
+                        <p class="mt-1 font-semibold">Bayar sebelum {{ $order->batas_bayar_at->format('d-m-Y H:i') }} WIB</p>
+                    @endif
                     @if ($toko->nama_bank && $toko->no_rekening)
-                        <p class="mt-2">{{ $toko->nama_bank }} · <b class="tabular-nums">{{ $toko->no_rekening }}</b> a.n. {{ $toko->atas_nama_rekening }}</p>
+                        <p class="mt-3">{{ $toko->nama_bank }} · <b class="tabular-nums">{{ $toko->no_rekening }}</b> a.n. {{ $toko->atas_nama_rekening }}</p>
                     @endif
                     @if ($toko->gambar_qris)
                         <img src="{{ asset('storage/'.$toko->gambar_qris) }}" alt="Kode QRIS {{ $toko->nama_toko }}" class="mt-3 size-48 rounded-lg bg-white object-contain p-2">
                     @endif
                     @if (! ($toko->nama_bank && $toko->no_rekening) && ! $toko->gambar_qris)
-                        <p class="mt-2">Hubungi admin lewat WhatsApp untuk informasi rekening atau QRIS.</p>
+                        <p class="mt-3">Hubungi admin lewat WhatsApp untuk informasi rekening atau QRIS.</p>
                     @endif
-                    <p class="mt-3 text-teks-lemah">Pembayaran diverifikasi manual oleh admin. Pesanan tidak dianggap lunas sebelum admin memverifikasinya.</p>
+                    <p class="mt-3 text-teks-lemah">Pembayaran dicek oleh admin. Pesanan otomatis kedaluwarsa jika tidak dibayar sebelum batas waktu, dan stoknya dilepas kembali.</p>
+                </div>
+            @elseif ($order->status_pesanan === 'Menunggu Konfirmasi' && $order->metode_pembayaran === 'Transfer/QRIS')
+                <div class="rounded-2xl border border-garis bg-kartu p-5 text-sm text-teks-lemah">
+                    {{ $order->status_pembayaran === 'Lunas'
+                        ? 'Pembayaran sudah diterima. Admin sedang memeriksa ketersediaan barang.'
+                        : 'Admin akan menghubungi Anda lewat WhatsApp untuk konfirmasi dan ongkir, lalu meminta pembayaran.' }}
                 </div>
             @endif
 
             <div class="flex flex-wrap gap-3">
                 <x-button varian="wa" :href="$toko->waUrl($pesanWa)"><x-icon nama="whatsapp" ukuran="size-4" /> Hubungi Admin via WhatsApp</x-button>
-                @if ($order->status_pesanan === 'Menunggu Konfirmasi')
+                @if (in_array($order->status_pesanan, ['Menunggu Konfirmasi', 'Menunggu Pembayaran']))
                     <form method="POST" action="{{ route('pesanan.batal', $order->public_token) }}" onsubmit="return confirm('Batalkan pesanan ini?')">
                         @csrf
                         <x-button type="submit" varian="garis">Ajukan Pembatalan</x-button>

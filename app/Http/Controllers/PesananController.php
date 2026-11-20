@@ -37,13 +37,15 @@ class PesananController extends Controller
     // Struk digital sekaligus halaman status. Diakses lewat token acak, bukan ID berurutan.
     public function show(Order $order): View
     {
-        return view('pelanggan.pesanan.show', ['order' => $order->load('items')]);
+        Order::prosesKedaluwarsa(); // pastikan status "Kedaluwarsa" sudah terbarui sebelum ditampilkan
+
+        return view('pelanggan.pesanan.show', ['order' => $order->refresh()->load('items')]);
     }
 
-    // Pelanggan hanya boleh membatalkan saat status masih Menunggu Konfirmasi. Selebihnya lewat WhatsApp ke admin.
+    // Pelanggan hanya boleh membatalkan sebelum pesanan diproses. Selebihnya lewat WhatsApp ke admin.
     public function batal(Order $order): RedirectResponse
     {
-        $berhasil = $order->batalkan('pelanggan', ['Menunggu Konfirmasi']);
+        $berhasil = $order->batalkan('pelanggan', ['Menunggu Konfirmasi', 'Menunggu Pembayaran']);
 
         return redirect()->route('pesanan.show', $order->public_token)->with(
             $berhasil ? 'ok' : 'err',

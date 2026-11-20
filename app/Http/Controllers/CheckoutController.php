@@ -41,6 +41,7 @@ class CheckoutController extends Controller
             return redirect()->route('keranjang.index')->with('err', 'Keranjang masih kosong.');
         }
 
+        Order::prosesKedaluwarsa(); // stok dari pesanan kedaluwarsa dilepas dulu
         $data = $request->validated();
 
         // 2. Satu transaksi: cek stok & harga terbaru, simpan pesanan, kurangi stok.
@@ -90,6 +91,12 @@ class CheckoutController extends Controller
                     'subtotal' => $p->harga * $jumlah,
                 ]);
                 $p->decrement('stok', $jumlah);
+            }
+
+            // Transfer/QRIS ambil di toko: total sudah pasti, jadi langsung menunggu pembayaran dengan batas waktu.
+            // Pesanan antar menunggu admin menentukan ongkir lebih dulu (tombol "Minta Pembayaran").
+            if ($data['metode_pembayaran'] === 'Transfer/QRIS' && $data['metode_pengambilan'] === 'Ambil di Toko') {
+                $order->mulaiMenungguPembayaran();
             }
 
             return $order;

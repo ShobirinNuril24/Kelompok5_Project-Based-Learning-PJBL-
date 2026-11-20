@@ -21,6 +21,7 @@ class AdminSeeder extends Seeder
         $admin = User::first() ?? new User();
         $admin->fill([
             'name' => config('toko.admin.nama'),
+            'username' => config('toko.admin.username'),
             'email' => $email,
             'password' => $password,
         ])->save();

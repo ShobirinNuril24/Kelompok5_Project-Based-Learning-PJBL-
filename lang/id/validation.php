@@ -2,8 +2,11 @@
 
 // Pesan validasi bahasa Indonesia (Laravel tidak menyediakan folder lang secara bawaan).
 return [
+    'accepted' => ':attribute harus disetujui.',
+    'array' => ':attribute harus berupa daftar.',
     'required' => ':attribute wajib diisi.',
     'required_if' => ':attribute wajib diisi.',
+    'required_with' => ':attribute wajib diisi.',
     'email' => ':attribute harus berupa email yang valid.',
     'string' => ':attribute harus berupa teks.',
     'integer' => ':attribute harus berupa bilangan bulat.',
@@ -38,6 +41,16 @@ return [
         'produk_id' => 'Produk',
         'jumlah' => 'Jumlah',
         'email' => 'Email',
+        'login' => 'Email/username',
         'password' => 'Password',
+        'status' => 'Status',
+        'status_pembayaran' => 'Status pembayaran',
+        'catatan_admin' => 'Catatan admin',
+        'kuantitas' => 'Jumlah barang',
+        'tambah_product_id' => 'Produk pengganti',
+        'tambah_kuantitas' => 'Jumlah produk pengganti',
+        'ongkir' => 'Ongkir',
+        'disetujui' => 'Persetujuan pelanggan',
+        'q' => 'Kata kunci',
     ],
 ];

@@ -41,7 +41,7 @@ class CheckoutTest extends TestCase
         ], $ubah));
     }
 
-    public function test_checkout_berhasil_mengurangi_stok_satu_kali(): void
+    public function test_checkout_tunai_mengurangi_stok_satu_kali(): void
     {
         $this->withSession(['keranjang' => [$this->produk->id => 2]])->kirim()->assertRedirect();
 
@@ -99,5 +99,60 @@ class CheckoutTest extends TestCase
 
         $this->post('/pesanan/'.$order->public_token.'/batal'); // request diulang
         $this->assertSame(30, $this->produk->fresh()->stok);     // stok tidak bertambah lagi
+    }
+
+    public function test_transfer_ambil_di_toko_langsung_menunggu_pembayaran(): void
+    {
+        $this->withSession(['keranjang' => [$this->produk->id => 2]])
+            ->kirim(['metode_pembayaran' => 'Transfer/QRIS']);
+
+        $order = Order::first();
+        $this->assertSame('Menunggu Pembayaran', $order->status_pesanan);
+        $this->assertSame('Belum Dibayar', $order->status_pembayaran); // tidak otomatis lunas
+        $this->assertTrue($order->batas_bayar_at->equalTo(now()->addMinutes(60)));
+        $this->assertDatabaseHas('payments', ['order_id' => $order->id, 'jumlah' => 156000, 'status' => 'Menunggu']);
+    }
+
+    public function test_transfer_antar_menunggu_konfirmasi_ongkir_dulu(): void
+    {
+        $this->withSession(['keranjang' => [$this->produk->id => 1]])
+            ->kirim(['metode_pembayaran' => 'Transfer/QRIS', 'metode_pengambilan' => 'Diantarkan', 'alamat_pengantaran' => 'Jl. Pagesangan 1']);
+
+        $order = Order::first();
+        $this->assertSame('Menunggu Konfirmasi', $order->status_pesanan);
+        $this->assertSame(0, $order->payments()->count());
+    }
+
+    public function test_pesanan_kedaluwarsa_mengembalikan_stok_hanya_satu_kali(): void
+    {
+        $this->withSession(['keranjang' => [$this->produk->id => 2]])->kirim(['metode_pembayaran' => 'Transfer/QRIS']);
+        $order = Order::first();
+        $this->assertSame(28, $this->produk->fresh()->stok);
+
+        Carbon::setTestNow(now()->addMinutes(30)); // belum lewat batas bayar
+        $this->assertSame(0, Order::prosesKedaluwarsa());
+        $this->assertSame(28, $this->produk->fresh()->stok);
+
+        Carbon::setTestNow(now()->addMinutes(31)); // lewat batas bayar
+        $this->assertSame(1, Order::prosesKedaluwarsa());
+        $this->assertSame(30, $this->produk->fresh()->stok);
+        $this->assertSame('Kedaluwarsa', $order->fresh()->status_pesanan);
+        $this->assertDatabaseHas('payments', ['order_id' => $order->id, 'status' => 'Kedaluwarsa']);
+
+        $this->assertSame(0, Order::prosesKedaluwarsa()); // diulang: stok tidak bertambah lagi
+        $this->assertSame(30, $this->produk->fresh()->stok);
+    }
+
+    public function test_pesanan_kedaluwarsa_tidak_bisa_dianggap_lunas_atau_dibatalkan(): void
+    {
+        $this->withSession(['keranjang' => [$this->produk->id => 1]])->kirim(['metode_pembayaran' => 'Transfer/QRIS']);
+        $order = Order::first();
+        Carbon::setTestNow(now()->addMinutes(61));
+        Order::prosesKedaluwarsa();
+
+        $this->assertNotNull($order->fresh()->tandaiLunas());     // ditolak
+        $this->assertFalse($order->fresh()->batalkan('admin'));   // stok tidak dikembalikan dua kali
+        $this->assertSame(30, $this->produk->fresh()->stok);
+        $this->assertSame('Belum Dibayar', $order->fresh()->status_pembayaran);
     }
 }
