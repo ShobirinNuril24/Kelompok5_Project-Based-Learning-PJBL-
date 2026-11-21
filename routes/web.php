@@ -7,8 +7,13 @@ use App\Http\Controllers\KeranjangController;
 use App\Http\Controllers\PesananController;
 use App\Http\Controllers\ProdukController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\HariLiburController;
+use App\Http\Controllers\Admin\KategoriController;
 use App\Http\Controllers\Admin\LoginController;
+use App\Http\Controllers\Admin\PengaturanController;
 use App\Http\Controllers\Admin\PesananController as AdminPesananController;
+use App\Http\Controllers\Admin\ProdukController as AdminProdukController;
+use App\Http\Controllers\Admin\RiwayatController;
 
 #User Routes
 Route::get('/', BerandaController::class)->name('beranda');
@@ -49,5 +54,16 @@ Route::middleware('auth')->prefix('admin')->group(function () {
         Route::patch('pesanan/{order}/catatan', [AdminPesananController::class, 'ubahCatatan'])->name('pesanan.catatan');
         Route::get('pesanan/{order}/item', [AdminPesananController::class, 'editItem'])->name('pesanan.item');
         Route::put('pesanan/{order}/item', [AdminPesananController::class, 'updateItem'])->name('pesanan.item.update');
+
+        // Phase 3B: pengelolaan
+        Route::resource('produk', AdminProdukController::class)->except('show')->parameters(['produk' => 'produk']);
+        Route::patch('produk/{produk}/aktif', [AdminProdukController::class, 'ubahAktif'])->name('produk.aktif');
+        Route::resource('kategori', KategoriController::class)->except('show')->parameters(['kategori' => 'kategori']);
+        Route::get('riwayat', [RiwayatController::class, 'index'])->name('riwayat.index');
+        Route::get('hari-libur', [HariLiburController::class, 'index'])->name('hari-libur.index');
+        Route::post('hari-libur', [HariLiburController::class, 'store'])->name('hari-libur.store');
+        Route::delete('hari-libur/{hariLibur}', [HariLiburController::class, 'destroy'])->name('hari-libur.destroy');
+        Route::get('pengaturan', [PengaturanController::class, 'edit'])->name('pengaturan.edit');
+        Route::put('pengaturan', [PengaturanController::class, 'update'])->name('pengaturan.update');
     });
 });

@@ -27,6 +27,7 @@ class DashboardController extends Controller
             'habis' => Product::aktif()->where('stok', 0)->count(),
             'menipis' => Product::aktif()->where('stok', '>', 0)->where('stok', '<=', $ambang)->orderBy('stok')->limit(5)->get(),
             'ambang' => $ambang,
+            'pendapatan' => (int) Order::where('status_pesanan', 'Selesai')->sum('total_harga'),
             'terbaru' => Order::latest()->limit(8)->get(),
         ]);
     }

@@ -35,7 +35,7 @@
     <section class="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
         <x-admin.kartu-stat label="Pesanan masuk" :nilai="$total" :ket="$hariIni.' hari ini'" :href="route('admin.pesanan.index')" />
         <x-admin.kartu-stat label="Sedang diproses" :nilai="$diproses" ket="Diproses, siap diambil, diantarkan" />
-        <x-admin.kartu-stat label="Selesai" :nilai="$hitung['Selesai']" :href="route('admin.pesanan.index', ['status' => 'Selesai'])" />
+        <x-admin.kartu-stat label="Selesai" :nilai="$hitung['Selesai']" :ket="'Pendapatan Rp '.number_format($pendapatan, 0, ',', '.')" :href="route('admin.riwayat.index')" />
         <x-admin.kartu-stat label="Dibatalkan" :nilai="$hitung['Dibatalkan']" :ket="$hitung['Kedaluwarsa'].' kedaluwarsa'" :href="route('admin.pesanan.index', ['status' => 'Dibatalkan'])" />
     </section>
 

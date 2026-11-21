@@ -23,6 +23,11 @@
         $menuAdmin = [
             ['Dasbor', 'admin.dashboard', 'home', 'admin.dashboard'],
             ['Pesanan', 'admin.pesanan.index', 'receipt', 'admin.pesanan.*'],
+            ['Produk', 'admin.produk.index', 'box', 'admin.produk.*'],
+            ['Kategori', 'admin.kategori.index', 'tag', 'admin.kategori.*'],
+            ['Riwayat', 'admin.riwayat.index', 'chart', 'admin.riwayat.*'],
+            ['Hari Libur', 'admin.hari-libur.index', 'calendar', 'admin.hari-libur.*'],
+            ['Pengaturan', 'admin.pengaturan.edit', 'settings', 'admin.pengaturan.*'],
         ];
     @endphp
 
@@ -41,7 +46,7 @@
                 </div>
             </div>
 
-            <nav class="flex-1 space-y-1 p-3" aria-label="Menu admin">
+            <nav class="flex-1 space-y-1 overflow-y-auto p-3" aria-label="Menu admin">
                 @foreach ($menuAdmin as [$label, $rute, $ikon, $pola])
                     <a href="{{ route($rute) }}" @if (request()->routeIs($pola)) aria-current="page" @endif
                        @class([
