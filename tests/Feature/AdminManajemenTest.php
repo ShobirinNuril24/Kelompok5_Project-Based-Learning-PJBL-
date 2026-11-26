@@ -38,8 +38,14 @@ class AdminManajemenTest extends TestCase
     private function dataProduk(array $ubah = []): array
     {
         return array_merge([
-            'category_id' => Category::first()->id, 'nama_produk' => 'Kacang Hijau 500 g', 'deskripsi' => 'Kacang pilihan',
-            'satuan' => 'Kemasan', 'harga' => 12000, 'stok' => 20, 'is_active' => 1, 'is_unggulan' => 0,
+            'category_id' => Category::first()->id,
+            'nama_produk' => 'Kacang Hijau 500 g',
+            'deskripsi' => 'Kacang pilihan',
+            'satuan' => 'Kemasan',
+            'harga' => 12000,
+            'stok' => 20,
+            'is_active' => 1,
+            'is_unggulan' => 0,
         ], $ubah);
     }
 
@@ -51,19 +57,34 @@ class AdminManajemenTest extends TestCase
         }
 
         return array_merge([
-            'toko_buka' => 1, 'nama_toko' => 'Toko Sepuluh', 'alamat_toko' => 'Pasar Pagesangan', 'no_whatsapp' => '081234567890',
-            'nama_bank' => 'BCA', 'no_rekening' => '1234567890', 'atas_nama_rekening' => 'Toko Sepuluh',
-            'batas_pembayaran_menit' => 60, 'minimum_pesanan' => 0, 'ambang_stok_menipis' => 10,
-            'radius_antar_km' => '3.5', 'catatan_pengantaran' => 'Antar sekitar pasar', 'jadwal' => $jadwal,
+            'toko_buka' => 1,
+            'nama_toko' => 'Toko Sepuluh',
+            'alamat_toko' => 'Pasar Pagesangan',
+            'no_whatsapp' => '081234567890',
+            'nama_bank' => 'BCA',
+            'no_rekening' => '1234567890',
+            'atas_nama_rekening' => 'Toko Sepuluh',
+            'batas_pembayaran_menit' => 60,
+            'minimum_pesanan' => 0,
+            'ambang_stok_menipis' => 10,
+            'radius_antar_km' => '3.5',
+            'catatan_pengantaran' => 'Antar sekitar pasar',
+            'jadwal' => $jadwal,
         ], $ubah);
     }
 
     private function buatPesanan(string $status, int $total, string $metode = 'Tunai'): Order
     {
         return Order::create([
-            'nomor_pesanan' => 'SBK-TEST-'.strtoupper(Str::random(4)), 'nama_pelanggan' => 'Budi', 'no_whatsapp' => '081234567890',
-            'metode_pengambilan' => 'Ambil di Toko', 'metode_pembayaran' => $metode, 'ongkir' => 0, 'total_harga' => $total,
-            'status_pesanan' => $status, 'status_pembayaran' => $status === 'Selesai' ? 'Lunas' : 'Belum Dibayar',
+            'nomor_pesanan' => 'SBK-TEST-' . strtoupper(Str::random(4)),
+            'nama_pelanggan' => 'Budi',
+            'no_whatsapp' => '081234567890',
+            'metode_pengambilan' => 'Ambil di Toko',
+            'metode_pembayaran' => $metode,
+            'ongkir' => 0,
+            'total_harga' => $total,
+            'status_pesanan' => $status,
+            'status_pembayaran' => $status === 'Selesai' ? 'Lunas' : 'Belum Dibayar',
         ]);
     }
 
@@ -136,25 +157,45 @@ class AdminManajemenTest extends TestCase
         $this->assertNull($p->refresh()->gambar);
     }
 
+
     public function test_ubah_aktif_menyembunyikan_produk_dari_katalog(): void
     {
         $this->masuk();
+
         $p = Product::where('slug', 'beras-pandan-wangi-5-kg')->firstOrFail();
 
-        $this->patch("/admin/produk/{$p->id}/aktif")->assertRedirect();
-        $this->assertFalse($p->refresh()->is_active);
-        $this->get('/produk')->assertDontSee('Beras Pandan Wangi 5 kg');
+        // Nonaktifkan produk melalui halaman admin.
+        $this->patch("/admin/produk/{$p->id}/aktif")
+            ->assertRedirect();
 
-        $this->patch("/admin/produk/{$p->id}/aktif");
+        $this->assertFalse($p->refresh()->is_active);
+
+        // Pastikan produk nonaktif tidak masuk ke data katalog.
+        $response = $this->get('/produk');
+
+        $response->assertOk()
+            ->assertViewHas('produk', function ($produk) use ($p) {
+                return ! $produk->getCollection()->contains('id', $p->id);
+            });
+
+        // Aktifkan kembali produk.
+        $this->patch("/admin/produk/{$p->id}/aktif")
+            ->assertRedirect();
+
         $this->assertTrue($p->refresh()->is_active);
     }
+
 
     public function test_produk_yang_pernah_dipesan_tidak_bisa_dihapus(): void
     {
         $this->masuk();
         $dipesan = Product::where('slug', 'beras-pandan-wangi-5-kg')->firstOrFail();
         $this->buatPesanan('Menunggu Konfirmasi', 78000)->items()->create([
-            'product_id' => $dipesan->id, 'nama_produk_snapshot' => $dipesan->nama_produk, 'harga_snapshot' => 78000, 'kuantitas' => 1, 'subtotal' => 78000,
+            'product_id' => $dipesan->id,
+            'nama_produk_snapshot' => $dipesan->nama_produk,
+            'harga_snapshot' => 78000,
+            'kuantitas' => 1,
+            'subtotal' => 78000,
         ]);
         $bebas = Product::where('slug', 'garam-dapur-250-g')->firstOrFail();
 
@@ -259,7 +300,7 @@ class AdminManajemenTest extends TestCase
         $this->post('/admin/hari-libur', ['tanggal_tutup' => now()->subDay()->toDateString()])->assertSessionHasErrors('tanggal_tutup'); // lampau
         $this->get('/admin/hari-libur')->assertSee('Idulfitri');
 
-        $this->delete('/admin/hari-libur/'.StoreClosedDate::first()->id)->assertSessionHas('ok');
+        $this->delete('/admin/hari-libur/' . StoreClosedDate::first()->id)->assertSessionHas('ok');
         $this->assertSame(0, StoreClosedDate::count());
     }
 

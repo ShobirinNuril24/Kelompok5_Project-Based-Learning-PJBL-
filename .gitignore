@@ -27,3 +27,6 @@ Thumbs.db
 /toko_sepuluh_test
 *.sqlite
 *.sqlite3
+
+# Local testing environment
+.env.testing
