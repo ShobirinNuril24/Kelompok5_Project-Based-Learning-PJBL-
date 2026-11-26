@@ -22,3 +22,8 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Local test databases
+/toko_sepuluh_test
+*.sqlite
+*.sqlite3
