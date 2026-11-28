@@ -26,10 +26,10 @@ Route::patch('/keranjang/{produk}', [KeranjangController::class, 'update'])->nam
 Route::delete('/keranjang/{produk}', [KeranjangController::class, 'destroy'])->name('keranjang.destroy');
 
 Route::get('/checkout', [CheckoutController::class, 'create'])->name('checkout.create');
-Route::post('/checkout', [CheckoutController::class, 'store'])->middleware('throttle:10,1')->name('checkout.store');
+Route::post('/checkout', [CheckoutController::class, 'store'])->middleware('throttle:10,1,checkout')->name('checkout.store');
 
 Route::get('/status-pesanan', [PesananController::class, 'cari'])->name('status.cek');
-Route::post('/status-pesanan', [PesananController::class, 'temukan'])->middleware('throttle:10,1')->name('status.temukan');
+Route::post('/status-pesanan', [PesananController::class, 'temukan'])->middleware('throttle:10,1,cek-status')->name('status.temukan');
 Route::get('/pesanan/{order:public_token}', [PesananController::class, 'show'])->name('pesanan.show');
 Route::post('/pesanan/{order:public_token}/batal', [PesananController::class, 'batal'])->name('pesanan.batal');
 
