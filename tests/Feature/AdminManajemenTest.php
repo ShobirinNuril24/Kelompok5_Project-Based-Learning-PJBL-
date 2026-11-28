@@ -43,7 +43,7 @@ class AdminManajemenTest extends TestCase
             'deskripsi' => 'Kacang pilihan',
             'satuan' => 'Kemasan',
             'harga' => 12000,
-            'stok' => 20,
+            'tersedia' => '1',
             'is_active' => 1,
             'is_unggulan' => 0,
         ], $ubah);
@@ -66,7 +66,6 @@ class AdminManajemenTest extends TestCase
             'atas_nama_rekening' => 'Toko Sepuluh',
             'batas_pembayaran_menit' => 60,
             'minimum_pesanan' => 0,
-            'ambang_stok_menipis' => 10,
             'radius_antar_km' => '3.5',
             'catatan_pengantaran' => 'Antar sekitar pasar',
             'jadwal' => $jadwal,
@@ -130,8 +129,8 @@ class AdminManajemenTest extends TestCase
     {
         $this->masuk();
 
-        $this->post('/admin/produk', $this->dataProduk(['harga' => -1, 'stok' => 'abc', 'category_id' => 9999]))
-            ->assertSessionHasErrors(['harga', 'stok', 'category_id']);
+        $this->post('/admin/produk', $this->dataProduk(['harga' => -1, 'category_id' => 9999]))
+            ->assertSessionHasErrors(['harga', 'category_id']);
         $this->post('/admin/produk', $this->dataProduk(['gambar' => UploadedFile::fake()->create('virus.exe', 10)]))
             ->assertSessionHasErrors('gambar');
         $this->assertSame(0, Product::where('nama_produk', 'Kacang Hijau 500 g')->count());
@@ -315,5 +314,20 @@ class AdminManajemenTest extends TestCase
         $this->get('/admin/riwayat')->assertOk()->assertSee('Rp 30.000')->assertSee('Transfer/QRIS');
         $this->get('/admin/riwayat?hari=15')->assertSessionHasErrors('hari');
         $this->get('/admin')->assertSee('Pendapatan Rp 30.000');
+    }
+
+    // D-3: admin menandai produk Habis lewat form; katalog menampilkan Habis dan filter admin menemukannya.
+    public function test_admin_menandai_produk_habis(): void
+    {
+        $this->masuk();
+        $p = Product::where('slug', 'beras-pandan-wangi-5-kg')->firstOrFail();
+
+        $this->put("/admin/produk/{$p->id}", $this->dataProduk([
+            'nama_produk' => $p->nama_produk, 'tersedia' => '0', 'category_id' => $p->category_id,
+        ]))->assertRedirect();
+
+        $this->assertFalse($p->fresh()->tersedia);
+        $this->get("/produk/{$p->slug}")->assertOk()->assertSee('Sedang Habis');
+        $this->get('/admin/produk?status=habis')->assertOk()->assertSee($p->nama_produk);
     }
 }

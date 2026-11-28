@@ -9,7 +9,7 @@ class KedaluwarsakanPesanan extends Command
 {
     protected $signature = 'pesanan:kedaluwarsa';
 
-    protected $description = 'Kedaluwarsakan pesanan yang lewat batas waktu pembayaran dan kembalikan stoknya';
+    protected $description = 'Kedaluwarsakan pesanan yang lewat batas waktu pembayaran';
 
     public function handle(): int
     {

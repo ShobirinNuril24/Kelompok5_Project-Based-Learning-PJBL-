@@ -11,15 +11,15 @@
         </h3>
         <p class="mt-1 text-sm text-teks-lemah">per {{ $produk->satuan }}</p>
         <p class="mt-2 text-lg font-extrabold tabular-nums">@rupiah($produk->harga)</p>
-        <p class="mt-1 text-xs font-semibold {{ $produk->stok > 0 ? 'text-teks-lemah' : 'text-red-600 dark:text-red-400' }}">
-            {{ $produk->stok > 0 ? 'Stok: '.$produk->stok : 'Habis' }}
+        <p class="mt-1 text-xs font-semibold {{ $produk->tersedia ? 'text-teks-lemah' : 'text-red-600 dark:text-red-400' }}">
+            {{ $produk->tersedia ? 'Tersedia' : 'Habis' }}
         </p>
 
         <form method="POST" action="{{ route('keranjang.store') }}" class="mt-4">
             @csrf
             <input type="hidden" name="produk_id" value="{{ $produk->id }}">
-            <x-button type="submit" class="w-full" :disabled="$produk->stok < 1">
-                <x-icon nama="cart" ukuran="size-4" /> {{ $produk->stok > 0 ? 'Tambah' : 'Habis' }}
+            <x-button type="submit" class="w-full" :disabled="! $produk->tersedia">
+                <x-icon nama="cart" ukuran="size-4" /> {{ $produk->tersedia ? 'Tambah' : 'Habis' }}
             </x-button>
         </form>
     </div>

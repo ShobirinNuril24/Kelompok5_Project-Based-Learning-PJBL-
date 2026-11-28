@@ -52,6 +52,7 @@ class KatalogSeeder extends Seeder
                     'satuan' => $satuan,
                     'harga' => $harga,
                     'stok' => $stok,
+                    'tersedia' => $stok > 0, // D-3: Ada/Habis
                     'is_unggulan' => $unggulan,
                     'is_active' => $aktif,
                 ]);

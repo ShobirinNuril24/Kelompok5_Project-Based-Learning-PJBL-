@@ -41,15 +41,15 @@ class CheckoutController extends Controller
             return redirect()->route('keranjang.index')->with('err', 'Keranjang masih kosong.');
         }
 
-        Order::prosesKedaluwarsa(); // stok dari pesanan kedaluwarsa dilepas dulu
+        Order::prosesKedaluwarsa();
         $data = $request->validated();
 
-        // 2. Satu transaksi: cek stok & harga terbaru, simpan pesanan, kurangi stok.
+        // 2. Satu transaksi: cek ketersediaan & harga terbaru, lalu simpan pesanan (D-3: tanpa stok angka).
         //    Jika ada yang gagal, semua perubahan dibatalkan otomatis.
         $order = DB::transaction(function () use ($data, $toko) {
             $isi = Keranjang::isi();
 
-            // Baris produk dikunci agar dua checkout bersamaan tidak membuat stok negatif.
+            // Baris produk dikunci agar harga/ketersediaan tidak berubah di tengah checkout.
             $produk = Product::whereIn('id', array_keys($isi))->orderBy('id')->lockForUpdate()->get()->keyBy('id');
 
             $subtotal = 0;
@@ -58,8 +58,8 @@ class CheckoutController extends Controller
                 if (! $p || ! $p->is_active) {
                     throw ValidationException::withMessages(['keranjang' => 'Ada produk yang tidak lagi dijual. Periksa keranjang Anda.']);
                 }
-                if ($p->stok < $jumlah) {
-                    throw ValidationException::withMessages(['keranjang' => "Stok {$p->nama_produk} tinggal {$p->stok}. Ubah jumlahnya di keranjang."]);
+                if (! $p->tersedia) {
+                    throw ValidationException::withMessages(['keranjang' => "{$p->nama_produk} sedang habis. Hapus dari keranjang untuk melanjutkan."]);
                 }
                 $subtotal += $p->harga * $jumlah; // harga dari database, bukan dari browser
             }
@@ -90,7 +90,6 @@ class CheckoutController extends Controller
                     'kuantitas' => $jumlah,
                     'subtotal' => $p->harga * $jumlah,
                 ]);
-                $p->decrement('stok', $jumlah);
             }
 
             // Transfer/QRIS ambil di toko: total sudah pasti, jadi langsung menunggu pembayaran dengan batas waktu.

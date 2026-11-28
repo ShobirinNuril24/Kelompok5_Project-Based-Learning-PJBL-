@@ -98,7 +98,6 @@
             <h2 class="font-extrabold">Aturan pesanan dan pengantaran</h2>
             <div class="mt-3 grid gap-4 sm:grid-cols-2">
                 <x-input label="Minimum pesanan (Rp, 0 = tanpa minimum)" name="minimum_pesanan" type="number" :value="$toko->minimum_pesanan" min="0" required />
-                <x-input label="Ambang stok menipis" name="ambang_stok_menipis" type="number" :value="$toko->ambang_stok_menipis" min="0" max="1000" required />
                 <x-input label="Radius pengantaran (km, keterangan)" name="radius_antar_km" type="number" step="0.1" min="0" max="99.9" :value="$toko->radius_antar_km" />
                 <div class="sm:col-span-2">
                     <label for="catatan_pengantaran" class="mb-1 block text-sm font-semibold">Catatan pengantaran (tampil di halaman Tentang Kami)</label>

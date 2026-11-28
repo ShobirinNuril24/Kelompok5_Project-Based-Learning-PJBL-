@@ -18,7 +18,7 @@
             <label for="status" class="sr-only">Status</label>
             <select id="status" name="status" class="rounded-lg border border-garis bg-kartu px-3 py-2.5 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-sun">
                 <option value="">Semua status</option>
-                @foreach (['aktif' => 'Aktif', 'nonaktif' => 'Nonaktif', 'habis' => 'Stok habis', 'menipis' => 'Stok menipis'] as $nilai => $label)
+                @foreach (['aktif' => 'Aktif', 'nonaktif' => 'Nonaktif', 'habis' => 'Habis'] as $nilai => $label)
                     <option value="{{ $nilai }}" @selected(request('status') === $nilai)>{{ $label }}</option>
                 @endforeach
             </select>
@@ -58,7 +58,7 @@
                                 <td class="px-3 py-2.5">{{ $p->category->nama_kategori }}</td>
                                 <td class="whitespace-nowrap px-3 py-2.5 text-right tabular-nums">@rupiah($p->harga)</td>
                                 <td class="px-3 py-2.5">
-                                    <x-badge :warna="$p->stok < 1 ? 'bahaya' : ($p->stok <= $ambang ? 'peringatan' : 'netral')">{{ $p->stok < 1 ? 'Habis' : $p->stok }}</x-badge>
+                                    <x-badge :warna="$p->tersedia ? 'sukses' : 'bahaya'">{{ $p->tersedia ? 'Ada' : 'Habis' }}</x-badge>
                                 </td>
                                 <td class="px-3 py-2.5"><x-badge :warna="$p->is_active ? 'sukses' : 'netral'">{{ $p->is_active ? 'Aktif' : 'Nonaktif' }}</x-badge></td>
                                 <td class="py-2.5 pl-3">

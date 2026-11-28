@@ -25,11 +25,11 @@ class KeranjangController extends Controller
     {
         $data = $request->validate([
             'produk_id' => ['required', 'exists:products,id'],
-            'jumlah' => ['nullable', 'integer', 'min:1', 'max:999'],
+            'jumlah' => ['nullable', 'integer', 'min:1', 'max:'.Product::MAKS_JUMLAH],
         ]);
 
         $produk = Product::findOrFail($data['produk_id']);
-        if (! $produk->is_active || $produk->stok < 1) {
+        if (! $produk->bisaDipesan()) {
             return back()->with('err', "{$produk->nama_produk} sedang tidak tersedia.");
         }
 
@@ -40,8 +40,8 @@ class KeranjangController extends Controller
 
     public function update(Request $request, Product $produk): RedirectResponse
     {
-        $data = $request->validate(['jumlah' => ['required', 'integer', 'min:1', 'max:999']]);
-        Keranjang::atur($produk, $data['jumlah']); // otomatis dibatasi stok
+        $data = $request->validate(['jumlah' => ['required', 'integer', 'min:1', 'max:'.Product::MAKS_JUMLAH]]);
+        Keranjang::atur($produk, $data['jumlah']);
 
         return back();
     }

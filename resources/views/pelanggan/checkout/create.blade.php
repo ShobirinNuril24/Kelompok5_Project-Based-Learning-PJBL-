@@ -81,7 +81,7 @@
                     <div class="flex justify-between text-base"><dt class="font-bold">Total</dt><dd class="font-extrabold tabular-nums">@rupiah($total)</dd></div>
                 </dl>
                 <x-button type="submit" class="mt-5 w-full" :disabled="$pesanTutup || $bermasalah">Kirim Pesanan</x-button>
-                <p class="mt-3 text-xs text-teks-lemah">Harga dan stok diperiksa ulang oleh sistem saat pesanan dikirim.</p>
+                <p class="mt-3 text-xs text-teks-lemah">Harga dan ketersediaan barang diperiksa ulang oleh sistem saat pesanan dikirim.</p>
             </aside>
         </form>
     </x-container>

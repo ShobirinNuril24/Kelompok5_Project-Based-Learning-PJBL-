@@ -18,8 +18,8 @@
                 <p class="mt-3 text-3xl font-extrabold tabular-nums">@rupiah($produk->harga) <span class="text-base font-medium text-teks-lemah">/ {{ $produk->satuan }}</span></p>
 
                 <p class="mt-3">
-                    @if ($produk->stok > 0)
-                        <x-badge warna="sukses">Tersedia · stok {{ $produk->stok }}</x-badge>
+                    @if ($produk->tersedia)
+                        <x-badge warna="sukses">Tersedia</x-badge>
                     @else
                         <x-badge warna="bahaya">Habis</x-badge>
                     @endif
@@ -34,11 +34,11 @@
                     <input type="hidden" name="produk_id" value="{{ $produk->id }}">
                     <div>
                         <label for="jumlah" class="mb-1 block text-sm font-semibold">Jumlah</label>
-                        <input id="jumlah" type="number" name="jumlah" min="1" max="{{ max($produk->stok, 1) }}" value="1" @disabled($produk->stok < 1)
+                        <input id="jumlah" type="number" name="jumlah" min="1" max="{{ \App\Models\Product::MAKS_JUMLAH }}" value="1" @disabled(! $produk->tersedia)
                                class="w-24 rounded-lg border border-garis bg-kartu px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-sun">
                     </div>
-                    <x-button type="submit" :disabled="$produk->stok < 1">
-                        <x-icon nama="cart" ukuran="size-4" /> {{ $produk->stok > 0 ? 'Tambah ke Keranjang' : 'Stok Habis' }}
+                    <x-button type="submit" :disabled="! $produk->tersedia">
+                        <x-icon nama="cart" ukuran="size-4" /> {{ $produk->tersedia ? 'Tambah ke Keranjang' : 'Sedang Habis' }}
                     </x-button>
                 </form>
             </div>

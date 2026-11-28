@@ -48,7 +48,7 @@
                                     <form method="POST" action="{{ route('keranjang.update', $p) }}" x-data>
                                         @csrf @method('PATCH')
                                         <label class="sr-only" for="jumlah-{{ $p->id }}">Jumlah {{ $p->nama_produk }}</label>
-                                        <input id="jumlah-{{ $p->id }}" type="number" name="jumlah" min="1" max="{{ max($p->stok, 1) }}" value="{{ $b['jumlah'] }}"
+                                        <input id="jumlah-{{ $p->id }}" type="number" name="jumlah" min="1" max="{{ \App\Models\Product::MAKS_JUMLAH }}" value="{{ $b['jumlah'] }}"
                                                @change="$el.form.requestSubmit()"
                                                class="w-20 rounded-lg border border-garis bg-kartu px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sun">
                                     </form>

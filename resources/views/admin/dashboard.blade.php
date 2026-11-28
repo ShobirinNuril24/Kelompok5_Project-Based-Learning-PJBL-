@@ -6,7 +6,7 @@
     @php
         $diproses = $hitung['Diproses'] + $hitung['Siap Diambil'] + $hitung['Sedang Diantarkan'];
         $perluTindakan = [
-            ['Menunggu Konfirmasi', 'Menunggu konfirmasi', 'Periksa stok lalu proses'],
+            ['Menunggu Konfirmasi', 'Menunggu konfirmasi', 'Periksa barang lalu proses'],
             ['Menunggu Pembayaran', 'Menunggu pembayaran', 'Belum dibayar pelanggan'],
         ];
     @endphp
@@ -26,7 +26,7 @@
             <div class="rounded-xl bg-white/60 p-4">
                 <span class="block text-4xl font-extrabold tabular-nums">{{ $habis }}</span>
                 <span class="block text-sm font-bold">Produk habis</span>
-                <span class="text-xs">{{ $menipis->count() }} lainnya hampir habis</span>
+                <span class="text-xs">Tandai Ada lagi di halaman Produk</span>
             </div>
         </div>
     </section>
@@ -75,11 +75,11 @@
                 <div class="rounded-xl bg-green-100 p-3 dark:bg-green-900/40"><p class="text-2xl font-extrabold tabular-nums">{{ $tersedia }}</p><p class="text-xs font-semibold">Tersedia</p></div>
                 <div class="rounded-xl bg-red-100 p-3 dark:bg-red-900/40"><p class="text-2xl font-extrabold tabular-nums">{{ $habis }}</p><p class="text-xs font-semibold">Habis</p></div>
             </div>
-            <h3 class="mt-5 text-sm font-bold">Stok menipis (≤ {{ $ambang }})</h3>
-            @forelse ($menipis as $p)
-                <p class="mt-2 flex justify-between gap-3 text-sm"><span>{{ $p->nama_produk }}</span><x-badge warna="peringatan">{{ $p->stok }} {{ $p->satuan }}</x-badge></p>
+            <h3 class="mt-5 text-sm font-bold">Sedang habis</h3>
+            @forelse ($daftarHabis as $p)
+                <p class="mt-2 flex justify-between gap-3 text-sm"><span>{{ $p->nama_produk }}</span><x-badge warna="bahaya">Habis</x-badge></p>
             @empty
-                <p class="mt-2 text-sm text-teks-lemah">Tidak ada produk yang hampir habis.</p>
+                <p class="mt-2 text-sm text-teks-lemah">Semua produk aktif tersedia.</p>
             @endforelse
         </section>
     </div>

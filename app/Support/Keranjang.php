@@ -7,7 +7,7 @@ use Illuminate\Support\Collection;
 
 /**
  * Keranjang disimpan di session sebagai [product_id => jumlah].
- * Session BUKAN sumber kebenaran: harga dan stok selalu dibaca ulang dari database.
+ * Session BUKAN sumber kebenaran: harga dan ketersediaan selalu dibaca ulang dari database.
  */
 class Keranjang
 {
@@ -23,11 +23,11 @@ class Keranjang
         return array_sum(self::isi());
     }
 
-    // Atur jumlah (dibatasi stok). Jumlah < 1 berarti hapus.
+    // Atur jumlah (maksimal Product::MAKS_JUMLAH). Jumlah < 1 berarti hapus.
     public static function atur(Product $produk, int $jumlah): void
     {
         $isi = self::isi();
-        $jumlah = min($jumlah, $produk->stok);
+        $jumlah = min($jumlah, Product::MAKS_JUMLAH);
 
         if ($jumlah < 1) {
             unset($isi[$produk->id]);
@@ -54,7 +54,7 @@ class Keranjang
         session()->forget(self::KUNCI);
     }
 
-    // Baris keranjang dengan harga dan stok TERBARU. 'masalah' berisi pesan jika baris tidak bisa di-checkout.
+    // Baris keranjang dengan harga dan ketersediaan TERBARU. 'masalah' berisi pesan jika baris tidak bisa di-checkout.
     public static function baris(): Collection
     {
         $isi = self::isi();
@@ -77,8 +77,7 @@ class Keranjang
 
             $masalah = match (true) {
                 ! $p->is_active => 'Produk ini tidak lagi dijual.',
-                $p->stok < 1 => 'Stok habis.',
-                $p->stok < $jumlah => "Stok tersisa {$p->stok}. Kurangi jumlahnya.",
+                ! $p->tersedia => 'Sedang habis.',
                 default => null,
             };
 

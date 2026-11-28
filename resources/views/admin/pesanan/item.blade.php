@@ -9,7 +9,7 @@
     <h2 class="mt-3 text-2xl font-extrabold">Ubah item &amp; total</h2>
 
     <div role="note" class="mt-4 rounded-lg bg-amber-100 px-4 py-3 text-sm text-amber-900 dark:bg-amber-900/40 dark:text-amber-200">
-        Stok disesuaikan otomatis: menambah jumlah mengambil stok, mengurangi jumlah mengembalikan stok. Ubah hanya setelah pelanggan setuju lewat WhatsApp.
+        Jumlah hanya bisa ditambah untuk barang yang berstatus Ada. Ubah hanya setelah pelanggan setuju lewat WhatsApp.
         @if ($order->status_pembayaran === 'Lunas')
             <b>Pembayaran sudah Lunas</b>: selisih total diselesaikan manual dengan pelanggan dan wajib dicatat di bawah.
         @endif
@@ -22,7 +22,7 @@
             <h3 class="font-extrabold">Barang dalam pesanan</h3>
             <div class="mt-3 overflow-x-auto">
                 <table class="w-full text-left text-sm">
-                    <thead class="text-teks-lemah"><tr><th class="py-2 pr-3 font-semibold">Produk</th><th class="px-3 py-2 text-right font-semibold">Harga</th><th class="px-3 py-2 font-semibold">Jumlah</th><th class="py-2 pl-3 text-right font-semibold">Stok tersedia</th></tr></thead>
+                    <thead class="text-teks-lemah"><tr><th class="py-2 pr-3 font-semibold">Produk</th><th class="px-3 py-2 text-right font-semibold">Harga</th><th class="px-3 py-2 font-semibold">Jumlah</th><th class="py-2 pl-3 text-right font-semibold">Ketersediaan</th></tr></thead>
                     <tbody>
                         @foreach ($order->items as $i)
                             <tr class="border-t border-garis">
@@ -32,7 +32,7 @@
                                     <label class="sr-only" for="kuantitas-{{ $i->id }}">Jumlah {{ $i->nama_produk_snapshot }}</label>
                                     <input id="kuantitas-{{ $i->id }}" type="number" min="0" max="999" name="kuantitas[{{ $i->id }}]" value="{{ old('kuantitas.'.$i->id, $i->kuantitas) }}" class="{{ $kelasInput }} w-24">
                                 </td>
-                                <td class="py-2 pl-3 text-right tabular-nums text-teks-lemah">{{ $stok[$i->product_id] ?? 0 }}</td>
+                                <td class="py-2 pl-3 text-right text-teks-lemah">{{ ($tersedia[$i->product_id] ?? false) ? 'Ada' : 'Habis' }}</td>
                             </tr>
                         @endforeach
                     </tbody>
@@ -49,7 +49,7 @@
                     <select id="tambah_product_id" name="tambah_product_id" class="{{ $kelasInput }} w-full">
                         <option value="">— tidak menambah —</option>
                         @foreach ($produkTambah as $p)
-                            <option value="{{ $p->id }}" @selected(old('tambah_product_id') == $p->id)>{{ $p->nama_produk }} — Rp {{ number_format($p->harga, 0, ',', '.') }} (stok {{ $p->stok }})</option>
+                            <option value="{{ $p->id }}" @selected(old('tambah_product_id') == $p->id)>{{ $p->nama_produk }} — Rp {{ number_format($p->harga, 0, ',', '.') }} </option>
                         @endforeach
                     </select>
                 </div>

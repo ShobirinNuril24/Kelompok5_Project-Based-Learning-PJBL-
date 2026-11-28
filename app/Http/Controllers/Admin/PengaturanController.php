@@ -35,7 +35,6 @@ class PengaturanController extends Controller
             'gambar_qris' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
             'batas_pembayaran_menit' => ['required', 'integer', 'min:5', 'max:1440'],
             'minimum_pesanan' => ['required', 'integer', 'min:0', 'max:10000000'],
-            'ambang_stok_menipis' => ['required', 'integer', 'min:0', 'max:1000'],
             'radius_antar_km' => ['nullable', 'numeric', 'min:0', 'max:99.9'],
             'catatan_pengantaran' => ['nullable', 'string', 'max:1000'],
         ];
@@ -54,7 +53,7 @@ class PengaturanController extends Controller
         $data = $request->validate($aturan, $pesan, [
             'nama_toko' => 'nama toko', 'alamat_toko' => 'alamat toko', 'no_whatsapp' => 'nomor WhatsApp',
             'batas_pembayaran_menit' => 'batas waktu pembayaran', 'minimum_pesanan' => 'minimum pesanan',
-            'ambang_stok_menipis' => 'ambang stok menipis', 'radius_antar_km' => 'radius pengantaran',
+            'radius_antar_km' => 'radius pengantaran',
         ]);
         $toko = StoreSetting::ambil();
 

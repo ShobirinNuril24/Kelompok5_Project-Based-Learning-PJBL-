@@ -83,8 +83,8 @@ class PesananController extends Controller
 
         return view('admin.pesanan.item', [
             'order' => $order,
-            'produkTambah' => Product::aktif()->where('stok', '>', 0)->whereNotIn('id', $order->items->pluck('product_id'))->orderBy('nama_produk')->get(),
-            'stok' => Product::whereIn('id', $order->items->pluck('product_id'))->pluck('stok', 'id'),
+            'produkTambah' => Product::aktif()->where('tersedia', true)->whereNotIn('id', $order->items->pluck('product_id'))->orderBy('nama_produk')->get(),
+            'tersedia' => Product::whereIn('id', $order->items->pluck('product_id'))->pluck('tersedia', 'id'),
         ]);
     }
 

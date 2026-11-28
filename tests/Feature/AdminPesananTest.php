@@ -22,7 +22,7 @@ class AdminPesananTest extends TestCase
         parent::setUp();
         $this->withoutVite();
         $this->seed([TokoSeeder::class, KatalogSeeder::class]);
-        $this->produk = Product::where('slug', 'beras-pandan-wangi-5-kg')->first(); // stok 30, Rp 78.000
+        $this->produk = Product::where('slug', 'beras-pandan-wangi-5-kg')->first(); // Rp 78.000, tersedia (Ada)
     }
 
     private function masuk(): void
@@ -44,7 +44,6 @@ class AdminPesananTest extends TestCase
             'product_id' => $this->produk->id, 'nama_produk_snapshot' => $this->produk->nama_produk,
             'harga_snapshot' => 78000, 'kuantitas' => 1, 'subtotal' => 78000,
         ]);
-        $this->produk->decrement('stok', 1); // seperti checkout asli: stok sudah terpotong
 
         return $order;
     }
@@ -154,16 +153,15 @@ class AdminPesananTest extends TestCase
         $this->assertDatabaseHas('payments', ['order_id' => $o->id, 'jumlah' => 83000]);
     }
 
-    public function test_ubah_item_menyesuaikan_stok_total_dan_catatan(): void
+    public function test_ubah_item_menyesuaikan_total_dan_catatan(): void
     {
         $this->masuk();
-        $o = $this->buatPesanan();            // stok 29, 1 item
+        $o = $this->buatPesanan();            // 1 item
         $item = $o->items()->first();
 
         $this->put("/admin/pesanan/{$o->id}/item", ['kuantitas' => [$item->id => 3], 'ongkir' => 0, 'disetujui' => '1'])
             ->assertRedirect("/admin/pesanan/{$o->id}");
 
-        $this->assertSame(27, $this->produk->fresh()->stok);       // diambil 2 lagi
         $this->assertSame(234000, $o->fresh()->total_harga);        // 3 x 78.000
         $this->assertStringContainsString('disetujui pelanggan', $o->fresh()->catatan_admin);
     }
@@ -180,16 +178,22 @@ class AdminPesananTest extends TestCase
         $this->assertSame(78000, $o->fresh()->total_harga);
     }
 
-    public function test_ubah_item_ditolak_jika_stok_kurang_dan_tidak_ada_yang_berubah(): void
+    // D-3: jumlah barang yang sedang Habis tidak bisa ditambah; mengurangi tetap boleh.
+    public function test_ubah_item_ditolak_jika_produk_habis_dan_tidak_ada_yang_berubah(): void
     {
         $this->masuk();
         $o = $this->buatPesanan();
         $item = $o->items()->first();
+        $item->update(['kuantitas' => 2, 'subtotal' => 156000]);
+        $o->update(['total_harga' => 156000]);
+        $this->produk->update(['tersedia' => false]);
 
-        $this->put("/admin/pesanan/{$o->id}/item", ['kuantitas' => [$item->id => 99], 'ongkir' => 0, 'disetujui' => '1'])
+        $this->put("/admin/pesanan/{$o->id}/item", ['kuantitas' => [$item->id => 3], 'ongkir' => 0, 'disetujui' => '1'])
             ->assertSessionHas('err');
+        $this->assertSame(156000, $o->fresh()->total_harga);
 
-        $this->assertSame(29, $this->produk->fresh()->stok);
+        $this->put("/admin/pesanan/{$o->id}/item", ['kuantitas' => [$item->id => 1], 'ongkir' => 0, 'disetujui' => '1'])
+            ->assertSessionHas('ok');
         $this->assertSame(78000, $o->fresh()->total_harga);
     }
 
@@ -205,16 +209,15 @@ class AdminPesananTest extends TestCase
         $this->assertSame(78000, $o->fresh()->total_harga);
     }
 
-    public function test_admin_membatalkan_pesanan_mengembalikan_stok_satu_kali(): void
+    public function test_admin_membatalkan_pesanan_hanya_satu_kali(): void
     {
         $this->masuk();
-        $o = $this->buatPesanan();            // stok 29
+        $o = $this->buatPesanan();
 
         $this->patch("/admin/pesanan/{$o->id}/status", ['status' => 'Dibatalkan'])->assertSessionHas('ok');
-        $this->assertSame(30, $this->produk->fresh()->stok);
+        $this->assertSame('Dibatalkan', $o->fresh()->status_pesanan);
 
         $this->patch("/admin/pesanan/{$o->id}/status", ['status' => 'Dibatalkan'])->assertSessionHas('err');
-        $this->assertSame(30, $this->produk->fresh()->stok);
     }
 
     // ---------- Phase 09.4 S1 (FR-028) ----------
@@ -223,7 +226,7 @@ class AdminPesananTest extends TestCase
     public function test_item_pesanan_lunas_wajib_catatan_selisih(): void
     {
         $this->masuk();
-        $o = $this->buatPesanan(['status_pembayaran' => 'Lunas']); // Menunggu Konfirmasi + Lunas, stok 29
+        $o = $this->buatPesanan(['status_pembayaran' => 'Lunas']); // Menunggu Konfirmasi + Lunas
         $item = $o->items()->first();
 
         $this->get("/admin/pesanan/{$o->id}/item")->assertOk()->assertSee('Penyelesaian selisih pembayaran');
@@ -231,7 +234,6 @@ class AdminPesananTest extends TestCase
         $this->put("/admin/pesanan/{$o->id}/item", ['kuantitas' => [$item->id => 2], 'ongkir' => 0, 'disetujui' => '1'])
             ->assertSessionHas('err');
         $this->assertSame(78000, $o->fresh()->total_harga);
-        $this->assertSame(29, $this->produk->fresh()->stok);
 
         $this->put("/admin/pesanan/{$o->id}/item", [
             'kuantitas' => [$item->id => 2], 'ongkir' => 0, 'disetujui' => '1',
@@ -241,7 +243,6 @@ class AdminPesananTest extends TestCase
         $o->refresh();
         $this->assertSame(156000, $o->total_harga);
         $this->assertSame('Lunas', $o->status_pembayaran);
-        $this->assertSame(28, $this->produk->fresh()->stok);
         $this->assertStringContainsString('ditagih tambahan Rp 78.000', $o->catatan_admin);
         $this->assertStringContainsString('Pelanggan transfer tambahan', $o->catatan_admin);
     }
@@ -300,7 +301,6 @@ class AdminPesananTest extends TestCase
 
         $this->assertSame('Dibatalkan', $o->fresh()->status_pesanan);
         $this->assertStringContainsString('kembalikan Rp 78.000', $o->fresh()->catatan_admin);
-        $this->assertSame(30, $this->produk->fresh()->stok);
     }
 
     // D-1: nama status yang tampil mengikuti keputusan pemilik; nilai database tetap.
@@ -310,5 +310,20 @@ class AdminPesananTest extends TestCase
         $this->buatPesanan(['status_pesanan' => 'Diproses']);
 
         $this->get('/admin/pesanan')->assertOk()->assertSee('Sedang Disiapkan')->assertSee('Sedang Diantar')->assertDontSee('Sedang Diantarkan');
+    }
+
+    // D-7: pesanan Siap Diambil lebih dari 2 hari ditandai untuk dihubungi lewat WhatsApp, tidak dibatalkan otomatis.
+    public function test_pesanan_belum_diambil_dua_hari_ditandai(): void
+    {
+        $this->masuk();
+        $lama = $this->buatPesanan(['status_pesanan' => 'Siap Diambil']);
+        $lama->timestamps = false;
+        $lama->forceFill(['updated_at' => now()->subDays(3)])->save();
+        $baru = $this->buatPesanan(['status_pesanan' => 'Siap Diambil']);
+
+        $this->assertTrue($lama->fresh()->lewatBatasAmbil());
+        $this->assertFalse($baru->fresh()->lewatBatasAmbil());
+        $this->get("/admin/pesanan/{$lama->id}")->assertOk()->assertSee('belum diambil lebih dari 2 hari');
+        $this->assertSame('Siap Diambil', $lama->fresh()->status_pesanan);
     }
 }
