@@ -59,7 +59,7 @@
                                         <span class="block text-xs text-teks-lemah">{{ $o->created_at->format('d-m-Y H:i') }}</span></td>
                                     <td class="px-3 py-2.5">{{ $o->nama_pelanggan }}</td>
                                     <td class="px-3 py-2.5 text-right tabular-nums">@rupiah($o->total_harga)</td>
-                                    <td class="py-2.5 pl-3"><x-badge :warna="$o->warnaStatus()">{{ $o->status_pesanan }}</x-badge></td>
+                                    <td class="py-2.5 pl-3"><x-badge :warna="$o->warnaStatus()">{{ $o->labelStatus() }}</x-badge></td>
                                 </tr>
                             @endforeach
                         </tbody>

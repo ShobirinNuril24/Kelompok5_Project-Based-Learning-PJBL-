@@ -77,7 +77,7 @@
                     @endforeach
                 </ul>
                 <dl class="mt-4 space-y-2 border-t border-garis pt-4 text-sm">
-                    <div class="flex justify-between"><dt class="text-teks-lemah">Ongkir</dt><dd>Ditentukan admin</dd></div>
+                    <div class="flex justify-between"><dt class="text-teks-lemah">Ongkir (jika diantar)</dt><dd>{{ $total >= \App\Models\Order::gratisOngkirMinimal() ? 'Gratis' : 'Ditentukan admin' }}</dd></div>
                     <div class="flex justify-between text-base"><dt class="font-bold">Total</dt><dd class="font-extrabold tabular-nums">@rupiah($total)</dd></div>
                 </dl>
                 <x-button type="submit" class="mt-5 w-full" :disabled="$pesanTutup || $bermasalah">Kirim Pesanan</x-button>

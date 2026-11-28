@@ -9,12 +9,12 @@ class TokoSeeder extends Seeder
 {
     public function run(): void
     {
-        // Jadwal awal sesuai ORD 2.1: Jumat tutup 11.00, hari lain 11.30.
+        // Jadwal awal sesuai Decision Gate 28 Nov (D-5): semua hari 05.30–11.30 WIB.
         $jadwal = [];
         foreach (['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as $hari) {
             $jadwal[$hari] = [
                 'open' => '05:30',
-                'close' => $hari === 'friday' ? '11:00' : '11:30',
+                'close' => '11:30',
                 'is_open' => true,
             ];
         }

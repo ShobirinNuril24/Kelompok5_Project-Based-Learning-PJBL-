@@ -216,4 +216,99 @@ class AdminPesananTest extends TestCase
         $this->patch("/admin/pesanan/{$o->id}/status", ['status' => 'Dibatalkan'])->assertSessionHas('err');
         $this->assertSame(30, $this->produk->fresh()->stok);
     }
+
+    // ---------- Phase 09.4 S1 (FR-028) ----------
+
+    // D-8: pesanan Lunas boleh diubah, tetapi penyelesaian selisih wajib dicatat.
+    public function test_item_pesanan_lunas_wajib_catatan_selisih(): void
+    {
+        $this->masuk();
+        $o = $this->buatPesanan(['status_pembayaran' => 'Lunas']); // Menunggu Konfirmasi + Lunas, stok 29
+        $item = $o->items()->first();
+
+        $this->get("/admin/pesanan/{$o->id}/item")->assertOk()->assertSee('Penyelesaian selisih pembayaran');
+
+        $this->put("/admin/pesanan/{$o->id}/item", ['kuantitas' => [$item->id => 2], 'ongkir' => 0, 'disetujui' => '1'])
+            ->assertSessionHas('err');
+        $this->assertSame(78000, $o->fresh()->total_harga);
+        $this->assertSame(29, $this->produk->fresh()->stok);
+
+        $this->put("/admin/pesanan/{$o->id}/item", [
+            'kuantitas' => [$item->id => 2], 'ongkir' => 0, 'disetujui' => '1',
+            'catatan_selisih' => 'Pelanggan transfer tambahan',
+        ])->assertSessionHas('ok');
+
+        $o->refresh();
+        $this->assertSame(156000, $o->total_harga);
+        $this->assertSame('Lunas', $o->status_pembayaran);
+        $this->assertSame(28, $this->produk->fresh()->stok);
+        $this->assertStringContainsString('ditagih tambahan Rp 78.000', $o->catatan_admin);
+        $this->assertStringContainsString('Pelanggan transfer tambahan', $o->catatan_admin);
+    }
+
+    // D-4: Transfer/QRIS baru boleh disiapkan setelah Lunas. Tunai tetap bisa langsung disiapkan.
+    public function test_transfer_baru_disiapkan_setelah_lunas(): void
+    {
+        $this->masuk();
+        $transfer = $this->buatPesanan(['metode_pembayaran' => 'Transfer/QRIS']);
+
+        $this->patch("/admin/pesanan/{$transfer->id}/status", ['status' => 'Diproses'])->assertSessionHas('err');
+        $this->assertSame('Menunggu Konfirmasi', $transfer->fresh()->status_pesanan);
+
+        $transfer->update(['status_pembayaran' => 'Lunas']);
+        $this->patch("/admin/pesanan/{$transfer->id}/status", ['status' => 'Diproses'])->assertSessionHas('ok');
+        $this->assertSame('Diproses', $transfer->fresh()->status_pesanan);
+
+        $tunai = $this->buatPesanan();
+        $this->patch("/admin/pesanan/{$tunai->id}/status", ['status' => 'Diproses'])->assertSessionHas('ok');
+    }
+
+    // D-6: ongkir gratis bila subtotal barang mulai Rp50.000 (inklusif); di bawahnya ongkir dari admin dipakai.
+    public function test_gratis_ongkir_mulai_lima_puluh_ribu(): void
+    {
+        $this->masuk();
+        $antar = ['metode_pengambilan' => 'Diantarkan'];
+
+        $o = $this->buatPesanan($antar); // subtotal 78.000
+        $item = $o->items()->first();
+        $this->put("/admin/pesanan/{$o->id}/item", ['kuantitas' => [$item->id => 1], 'ongkir' => 10000, 'disetujui' => '1'])
+            ->assertSessionHas('ok');
+        $this->assertSame(0, $o->fresh()->ongkir);
+        $this->assertSame(78000, $o->fresh()->total_harga);
+
+        $murah = Product::where('slug', 'tepung-terigu-1-kg')->first(); // Rp 13.500
+        $o2 = Order::create([
+            'nomor_pesanan' => 'SBK-TEST-ONGK', 'nama_pelanggan' => 'Sari', 'no_whatsapp' => '081234567891',
+            'metode_pengambilan' => 'Diantarkan', 'metode_pembayaran' => 'Tunai', 'ongkir' => 0, 'total_harga' => 13500,
+            'status_pesanan' => 'Menunggu Konfirmasi', 'status_pembayaran' => 'Belum Dibayar',
+        ]);
+        $i2 = $o2->items()->create(['product_id' => $murah->id, 'nama_produk_snapshot' => $murah->nama_produk,
+            'harga_snapshot' => 13500, 'kuantitas' => 1, 'subtotal' => 13500]);
+        $this->put("/admin/pesanan/{$o2->id}/item", ['kuantitas' => [$i2->id => 1], 'ongkir' => 10000, 'disetujui' => '1'])
+            ->assertSessionHas('ok');
+        $this->assertSame(10000, $o2->fresh()->ongkir);
+        $this->assertSame(23500, $o2->fresh()->total_harga);
+    }
+
+    // D-2: pembatalan oleh toko atas pesanan Lunas mencatat refund manual.
+    public function test_admin_batal_pesanan_lunas_mencatat_refund(): void
+    {
+        $this->masuk();
+        $o = $this->buatPesanan(['status_pembayaran' => 'Lunas']);
+
+        $this->patch("/admin/pesanan/{$o->id}/status", ['status' => 'Dibatalkan'])->assertSessionHas('ok');
+
+        $this->assertSame('Dibatalkan', $o->fresh()->status_pesanan);
+        $this->assertStringContainsString('kembalikan Rp 78.000', $o->fresh()->catatan_admin);
+        $this->assertSame(30, $this->produk->fresh()->stok);
+    }
+
+    // D-1: nama status yang tampil mengikuti keputusan pemilik; nilai database tetap.
+    public function test_label_status_sesuai_keputusan(): void
+    {
+        $this->masuk();
+        $this->buatPesanan(['status_pesanan' => 'Diproses']);
+
+        $this->get('/admin/pesanan')->assertOk()->assertSee('Sedang Disiapkan')->assertSee('Sedang Diantar')->assertDontSee('Sedang Diantarkan');
+    }
 }

@@ -69,7 +69,7 @@
                     <dl class="mt-4 space-y-2 text-sm">
                         <div class="flex justify-between"><dt class="text-teks-lemah">Subtotal</dt><dd class="font-bold tabular-nums">@rupiah($total)</dd></div>
                     </dl>
-                    <p class="mt-3 text-xs text-teks-lemah">Ongkir untuk pengantaran ditentukan admin setelah pesanan dikonfirmasi lewat WhatsApp.</p>
+                    <p class="mt-3 text-xs text-teks-lemah">Gratis ongkir untuk belanja mulai @rupiah(\App\Models\Order::gratisOngkirMinimal()). Di bawah itu, ongkir pengantaran ditentukan admin setelah pesanan dikonfirmasi lewat WhatsApp.</p>
                     @if ($bermasalah)
                         <p class="mt-3 text-sm font-semibold text-red-600 dark:text-red-400">Perbaiki produk yang bermasalah sebelum checkout.</p>
                         <x-button class="mt-4 w-full" disabled>Lanjut ke Checkout</x-button>

@@ -155,4 +155,62 @@ class CheckoutTest extends TestCase
         $this->assertSame(30, $this->produk->fresh()->stok);
         $this->assertSame('Belum Dibayar', $order->fresh()->status_pembayaran);
     }
+
+    // ---------- Phase 09.4 S1 (FR-027, FR-030, SEC-17) ----------
+
+    public function test_pelanggan_tidak_bisa_membatalkan_pesanan_yang_sudah_lunas(): void
+    {
+        $this->withSession(['keranjang' => [$this->produk->id => 2]])->kirim(['metode_pembayaran' => 'Transfer/QRIS']);
+        $order = Order::first();
+        $order->tandaiLunas(); // Menunggu Pembayaran -> Menunggu Konfirmasi + Lunas
+
+        $this->post('/pesanan/'.$order->public_token.'/batal')->assertSessionHas('err');
+
+        $this->assertSame('Menunggu Konfirmasi', $order->fresh()->status_pesanan);
+        $this->assertSame('Lunas', $order->fresh()->status_pembayaran);
+        $this->assertSame(28, $this->produk->fresh()->stok); // stok tidak dikembalikan
+        $this->get('/pesanan/'.$order->public_token)->assertDontSee('Ajukan Pembatalan');
+    }
+
+    public function test_pelanggan_tidak_bisa_membatalkan_pesanan_yang_sedang_diproses(): void
+    {
+        $this->withSession(['keranjang' => [$this->produk->id => 2]])->kirim();
+        $order = Order::first();
+        $order->update(['status_pesanan' => 'Diproses']);
+
+        $this->post('/pesanan/'.$order->public_token.'/batal')->assertSessionHas('err');
+
+        $this->assertSame('Diproses', $order->fresh()->status_pesanan);
+        $this->assertSame(28, $this->produk->fresh()->stok);
+    }
+
+    public function test_produk_yang_sudah_dihapus_dibuang_dari_keranjang_dan_checkout_tetap_bisa(): void
+    {
+        $idTerhapus = Product::max('id') + 1000; // id yang tidak ada = produk sudah dihapus admin
+
+        $this->withSession(['keranjang' => [$this->produk->id => 1, $idTerhapus => 2]])
+            ->get('/keranjang')
+            ->assertOk()
+            ->assertSee('1 barang dihapus dari keranjang karena sudah tidak dijual.')
+            ->assertSessionHas('keranjang', [$this->produk->id => 1]);
+
+        $this->get('/checkout')->assertOk();
+        $this->kirim()->assertRedirect();
+
+        $this->assertSame(1, Order::count());
+        $this->assertSame(29, $this->produk->fresh()->stok);
+    }
+
+    public function test_katalog_menolak_parameter_array_dan_memperlakukan_wildcard_sebagai_teks(): void
+    {
+        $this->get('/produk?q[]=beras')->assertStatus(302);
+        $this->get('/produk?kategori[]=sembako')->assertStatus(302);
+        $this->get('/produk?q='.str_repeat('a', 101))->assertStatus(302);
+
+        $this->get('/produk?q=%25')->assertOk()
+            ->assertViewHas('produk', fn ($produk) => $produk->total() === 0); // tidak ada nama produk berisi "%"
+
+        $this->get('/produk?q=Beras')->assertOk()
+            ->assertViewHas('produk', fn ($produk) => $produk->getCollection()->contains('id', $this->produk->id));
+    }
 }

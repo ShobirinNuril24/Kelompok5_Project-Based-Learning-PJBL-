@@ -22,7 +22,7 @@
         @foreach (\App\Models\Order::STATUS_PESANAN as $s)
             <a href="{{ route('admin.pesanan.index', array_filter(['status' => $s, 'q' => request('q')])) }}"
                @class(['rounded-full border px-3.5 py-1.5 text-sm font-semibold', 'border-sun bg-sun text-ink' => request('status') === $s, 'border-garis bg-kartu hover:border-sun' => request('status') !== $s])>
-                {{ $s }} <span class="tabular-nums">{{ $jumlah[$s] ?? 0 }}</span></a>
+                {{ \App\Models\Order::label($s) }} <span class="tabular-nums">{{ $jumlah[$s] ?? 0 }}</span></a>
         @endforeach
     </div>
 
@@ -51,7 +51,7 @@
                                 <td class="px-3 py-2.5">{{ $o->metode_pengambilan }}</td>
                                 <td class="px-3 py-2.5">{{ $o->metode_pembayaran }}<br><x-badge :warna="$o->warnaPembayaran()">{{ $o->status_pembayaran }}</x-badge></td>
                                 <td class="whitespace-nowrap px-3 py-2.5 text-right tabular-nums">@rupiah($o->total_harga)</td>
-                                <td class="px-3 py-2.5"><x-badge :warna="$o->warnaStatus()">{{ $o->status_pesanan }}</x-badge></td>
+                                <td class="px-3 py-2.5"><x-badge :warna="$o->warnaStatus()">{{ $o->labelStatus() }}</x-badge></td>
                                 <td class="whitespace-nowrap px-3 py-2.5 text-teks-lemah">{{ $o->created_at->format('d-m-Y H:i') }}</td>
                                 <td class="py-2.5 pl-3"><x-button :href="route('admin.pesanan.show', $o)" varian="garis" class="!px-3 !py-1.5">Detail</x-button></td>
                             </tr>

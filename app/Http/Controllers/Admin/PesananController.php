@@ -97,6 +97,7 @@ class PesananController extends Controller
             $d['tambah_product_id'] ?? null,
             (int) ($d['tambah_kuantitas'] ?? 0),
             (int) ($d['ongkir'] ?? $order->ongkir),
+            $d['catatan_selisih'] ?? null,
         );
 
         return $galat

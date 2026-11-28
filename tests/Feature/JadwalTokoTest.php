@@ -32,8 +32,8 @@ class JadwalTokoTest extends TestCase
     {
         $this->assertTrue($this->tutup('2026-11-23 05:29'));   // Senin 05.29 ditolak
         $this->assertFalse($this->tutup('2026-11-23 05:30'));  // Senin 05.30 boleh (batas awal termasuk)
-        $this->assertFalse($this->tutup('2026-11-27 10:59'));  // Jumat 10.59 boleh
-        $this->assertTrue($this->tutup('2026-11-27 11:00'));   // Jumat 11.00 ditolak
+        $this->assertFalse($this->tutup('2026-11-27 11:29'));  // Jumat 11.29 boleh (D-5: sama dengan hari lain)
+        $this->assertTrue($this->tutup('2026-11-27 11:30'));   // Jumat 11.30 ditolak
         $this->assertFalse($this->tutup('2026-11-25 11:29'));  // Rabu 11.29 boleh
         $this->assertTrue($this->tutup('2026-11-25 11:30'));   // Rabu 11.30 ditolak (batas akhir tidak termasuk)
     }

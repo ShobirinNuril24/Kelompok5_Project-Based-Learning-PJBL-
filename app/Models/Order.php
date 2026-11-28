@@ -20,6 +20,18 @@ class Order extends Model
     ];
     public const STATUS_PEMBAYARAN = ['Belum Dibayar', 'Menunggu Verifikasi', 'Lunas'];
 
+    // D-1 (Decision Gate 28 Nov): nama status yang dilihat pengguna. Nilai di database tidak berubah.
+    public const LABEL_STATUS = [
+        'Menunggu Pembayaran' => 'Menunggu Pembayaran',
+        'Menunggu Konfirmasi' => 'Menunggu Konfirmasi',
+        'Diproses' => 'Sedang Disiapkan',
+        'Siap Diambil' => 'Siap Diambil',
+        'Sedang Diantarkan' => 'Sedang Diantar',
+        'Selesai' => 'Selesai',
+        'Dibatalkan' => 'Dibatalkan',
+        'Kedaluwarsa' => 'Kedaluwarsa',
+    ];
+
     // Perpindahan status yang boleh dilakukan ADMIN dari form status.
     // "Menunggu Pembayaran" (tombol Minta Pembayaran), "Lunas" (catat pembayaran), dan
     // "Kedaluwarsa" (otomatis oleh sistem) punya jalurnya sendiri. Status akhir tidak punya perpindahan.
@@ -70,6 +82,16 @@ class Order extends Model
         return str_starts_with($nomor, '62') ? '0'.substr($nomor, 2) : $nomor;
     }
 
+    public static function label(string $status): string
+    {
+        return self::LABEL_STATUS[$status] ?? $status;
+    }
+
+    public function labelStatus(): string
+    {
+        return self::label($this->status_pesanan);
+    }
+
     public function warnaStatus(): string
     {
         return match ($this->status_pesanan) {
@@ -95,6 +117,10 @@ class Order extends Model
     {
         if (! in_array($ke, self::TRANSISI[$this->status_pesanan] ?? [], true)) {
             return "Status {$this->status_pesanan} tidak bisa diubah ke {$ke}.";
+        }
+        // D-4: pesanan Transfer/QRIS baru disiapkan setelah uang masuk dan diverifikasi admin.
+        if ($ke === 'Diproses' && $this->metode_pembayaran === 'Transfer/QRIS' && $this->status_pembayaran !== 'Lunas') {
+            return 'Pembayaran Transfer/QRIS harus Lunas sebelum pesanan disiapkan.';
         }
         if ($ke === 'Siap Diambil' && $this->metode_pengambilan !== 'Ambil di Toko') {
             return 'Pesanan antar tidak memakai status Siap Diambil.';
@@ -131,7 +157,11 @@ class Order extends Model
             }
 
             if ($ke === 'Dibatalkan') {
-                $order->akhiri('Dibatalkan', 'Dibatalkan oleh admin. Stok dikembalikan.');
+                // D-2: pesanan yang sudah dibayar dikembalikan uangnya secara manual oleh toko, dan itu dicatat.
+                $refund = $order->status_pembayaran === 'Lunas'
+                    ? ' Pesanan sudah Lunas: kembalikan Rp '.number_format($order->total_harga, 0, ',', '.').' ke pelanggan secara manual.'
+                    : '';
+                $order->akhiri('Dibatalkan', 'Dibatalkan oleh admin. Stok dikembalikan.'.$refund);
             } else {
                 $order->update(['status_pesanan' => $ke]);
             }
@@ -217,17 +247,21 @@ class Order extends Model
 
     /**
      * Batalkan pesanan (pelanggan atau admin). Baris pesanan dikunci, jadi request ganda tidak
-     * mengembalikan stok dua kali. $statusBoleh membatasi status yang sah (dicek di dalam kunci).
+     * mengembalikan stok dua kali. $statusBoleh dan $pembayaranBoleh membatasi status yang sah
+     * (dicek di dalam kunci, supaya tidak balapan dengan admin yang sedang mencatat pembayaran).
      */
-    public function batalkan(string $oleh, ?array $statusBoleh = null): bool
+    public function batalkan(string $oleh, ?array $statusBoleh = null, ?array $pembayaranBoleh = null): bool
     {
-        return DB::transaction(function () use ($oleh, $statusBoleh) {
+        return DB::transaction(function () use ($oleh, $statusBoleh, $pembayaranBoleh) {
             $order = self::with('items')->whereKey($this->id)->lockForUpdate()->first();
 
             if (in_array($order->status_pesanan, ['Dibatalkan', 'Kedaluwarsa', 'Selesai'], true)) {
                 return false;
             }
             if ($statusBoleh !== null && ! in_array($order->status_pesanan, $statusBoleh, true)) {
+                return false;
+            }
+            if ($pembayaranBoleh !== null && ! in_array($order->status_pembayaran, $pembayaranBoleh, true)) {
                 return false;
             }
             $order->akhiri('Dibatalkan', "Dibatalkan oleh {$oleh}. Stok dikembalikan.");
@@ -268,14 +302,21 @@ class Order extends Model
      * $kuantitas = [id item => jumlah baru] (0 = hapus). Stok disesuaikan: tambah jumlah mengambil stok,
      * kurang jumlah mengembalikan stok. Semua dalam satu transaksi; gagal = tidak ada yang berubah.
      */
-    public function ubahItem(array $kuantitas, ?int $tambahId, int $tambahJumlah, int $ongkir): ?string
+    public function ubahItem(array $kuantitas, ?int $tambahId, int $tambahJumlah, int $ongkir, ?string $catatanSelisih = null): ?string
     {
         try {
-            DB::transaction(function () use ($kuantitas, $tambahId, $tambahJumlah, $ongkir) {
+            DB::transaction(function () use ($kuantitas, $tambahId, $tambahJumlah, $ongkir, $catatanSelisih) {
                 $order = self::whereKey($this->id)->lockForUpdate()->first();
                 if (! in_array($order->status_pesanan, ['Menunggu Konfirmasi', 'Diproses'], true)) {
                     throw new DomainException('Item hanya bisa diubah saat pesanan berstatus Menunggu Konfirmasi atau Diproses.');
                 }
+                // D-8: pesanan Lunas boleh diubah dengan persetujuan pelanggan, tetapi cara penyelesaian selisih wajib dicatat.
+                $lunas = $order->status_pembayaran === 'Lunas';
+                $catatanSelisih = trim((string) $catatanSelisih);
+                if ($lunas && $catatanSelisih === '') {
+                    throw new DomainException('Pesanan sudah Lunas. Tulis cara penyelesaian selisih pembayaran (dikembalikan atau ditambah).');
+                }
+                $totalLama = $order->total_harga;
 
                 $items = $order->items()->get();
                 $ids = $items->pluck('product_id')->push($tambahId)->filter()->unique()->sort()->values();
@@ -325,9 +366,18 @@ class Order extends Model
                     throw new DomainException('Pesanan harus punya minimal satu barang. Untuk membatalkan pesanan, ubah statusnya menjadi Dibatalkan.');
                 }
 
-                $ongkir = $order->metode_pengambilan === 'Diantarkan' ? $ongkir : 0;
+                // D-6: gratis ongkir bila subtotal barang mulai Rp50.000 (inklusif).
+                $ongkir = $order->metode_pengambilan === 'Diantarkan' && $subtotal < self::gratisOngkirMinimal() ? $ongkir : 0;
                 if ($ongkir !== $order->ongkir) {
                     $ringkas[] = 'Ongkir: Rp '.number_format($order->ongkir, 0, ',', '.').' → Rp '.number_format($ongkir, 0, ',', '.');
+                }
+
+                if ($lunas && $ringkas) {
+                    $selisih = $subtotal + $ongkir - $totalLama;
+                    $rp = fn (int $n) => 'Rp '.number_format(abs($n), 0, ',', '.');
+                    $ringkas[] = 'Sudah Lunas. Total '.$rp($totalLama).' → '.$rp($subtotal + $ongkir).'; '
+                        .($selisih < 0 ? 'dikembalikan ke pelanggan '.$rp($selisih) : ($selisih > 0 ? 'ditagih tambahan '.$rp($selisih) : 'tanpa selisih'))
+                        .'. Penyelesaian: '.$catatanSelisih;
                 }
 
                 $order->update([
@@ -345,12 +395,18 @@ class Order extends Model
         return null;
     }
 
+    public static function gratisOngkirMinimal(): int
+    {
+        return (int) config('toko.gratis_ongkir_minimal', 50000);
+    }
+
     // ---------- Internal ----------
 
     // Dipanggil dalam transaksi pada baris yang sudah dikunci dan sudah memuat items.
     private function akhiri(string $status, string $catatan): void
     {
-        foreach ($this->items as $item) {
+        // Urut product_id: sama dengan urutan kunci di checkout dan ubahItem, agar tidak saling menunggu (deadlock).
+        foreach ($this->items->sortBy('product_id') as $item) {
             Product::whereKey($item->product_id)->increment('stok', $item->kuantitas);
         }
         $this->payments()->where('status', 'Menunggu')->update(['status' => $status === 'Kedaluwarsa' ? 'Kedaluwarsa' : 'Dibatalkan']);
