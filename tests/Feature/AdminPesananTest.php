@@ -216,4 +216,22 @@ class AdminPesananTest extends TestCase
         $this->patch("/admin/pesanan/{$o->id}/status", ['status' => 'Dibatalkan'])->assertSessionHas('err');
         $this->assertSame(30, $this->produk->fresh()->stok);
     }
+
+    // ---------- Phase 09.4 S1 (FR-028) ----------
+
+    public function test_item_tidak_bisa_diubah_setelah_lunas(): void
+    {
+        $this->masuk();
+        $o = $this->buatPesanan(['status_pembayaran' => 'Lunas']); // Menunggu Konfirmasi + Lunas, stok 29
+        $item = $o->items()->first();
+
+        $this->get("/admin/pesanan/{$o->id}/item")->assertRedirect("/admin/pesanan/{$o->id}")->assertSessionHas('err');
+
+        $this->put("/admin/pesanan/{$o->id}/item", ['kuantitas' => [$item->id => 0], 'ongkir' => 0, 'disetujui' => '1'])
+            ->assertSessionHas('err');
+
+        $this->assertSame(78000, $o->fresh()->total_harga);
+        $this->assertSame(1, $o->items()->count());
+        $this->assertSame(29, $this->produk->fresh()->stok);
+    }
 }

@@ -97,7 +97,7 @@
 
             <div class="flex flex-wrap gap-3">
                 <x-button varian="wa" :href="$toko->waUrl($pesanWa)"><x-icon nama="whatsapp" ukuran="size-4" /> Hubungi Admin via WhatsApp</x-button>
-                @if (in_array($order->status_pesanan, ['Menunggu Konfirmasi', 'Menunggu Pembayaran']))
+                @if (in_array($order->status_pesanan, ['Menunggu Konfirmasi', 'Menunggu Pembayaran']) && $order->status_pembayaran === 'Belum Dibayar')
                     <form method="POST" action="{{ route('pesanan.batal', $order->public_token) }}" onsubmit="return confirm('Batalkan pesanan ini?')">
                         @csrf
                         <x-button type="submit" varian="garis">Ajukan Pembatalan</x-button>

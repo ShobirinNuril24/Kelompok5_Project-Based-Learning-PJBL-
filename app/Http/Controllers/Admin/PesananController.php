@@ -79,6 +79,9 @@ class PesananController extends Controller
         if (! in_array($order->status_pesanan, ['Menunggu Konfirmasi', 'Diproses'], true)) {
             return redirect()->route('admin.pesanan.show', $order)->with('err', 'Item hanya bisa diubah saat pesanan Menunggu Konfirmasi atau Diproses.');
         }
+        if ($order->status_pembayaran === 'Lunas') {
+            return redirect()->route('admin.pesanan.show', $order)->with('err', 'Pesanan sudah Lunas. Perubahan item ditangani manual agar selisih pembayaran tercatat.');
+        }
         $order->load('items');
 
         return view('admin.pesanan.item', [

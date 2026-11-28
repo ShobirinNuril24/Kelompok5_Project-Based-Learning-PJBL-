@@ -217,17 +217,21 @@ class Order extends Model
 
     /**
      * Batalkan pesanan (pelanggan atau admin). Baris pesanan dikunci, jadi request ganda tidak
-     * mengembalikan stok dua kali. $statusBoleh membatasi status yang sah (dicek di dalam kunci).
+     * mengembalikan stok dua kali. $statusBoleh dan $pembayaranBoleh membatasi status yang sah
+     * (dicek di dalam kunci, supaya tidak balapan dengan admin yang sedang mencatat pembayaran).
      */
-    public function batalkan(string $oleh, ?array $statusBoleh = null): bool
+    public function batalkan(string $oleh, ?array $statusBoleh = null, ?array $pembayaranBoleh = null): bool
     {
-        return DB::transaction(function () use ($oleh, $statusBoleh) {
+        return DB::transaction(function () use ($oleh, $statusBoleh, $pembayaranBoleh) {
             $order = self::with('items')->whereKey($this->id)->lockForUpdate()->first();
 
             if (in_array($order->status_pesanan, ['Dibatalkan', 'Kedaluwarsa', 'Selesai'], true)) {
                 return false;
             }
             if ($statusBoleh !== null && ! in_array($order->status_pesanan, $statusBoleh, true)) {
+                return false;
+            }
+            if ($pembayaranBoleh !== null && ! in_array($order->status_pembayaran, $pembayaranBoleh, true)) {
                 return false;
             }
             $order->akhiri('Dibatalkan', "Dibatalkan oleh {$oleh}. Stok dikembalikan.");
@@ -275,6 +279,10 @@ class Order extends Model
                 $order = self::whereKey($this->id)->lockForUpdate()->first();
                 if (! in_array($order->status_pesanan, ['Menunggu Konfirmasi', 'Diproses'], true)) {
                     throw new DomainException('Item hanya bisa diubah saat pesanan berstatus Menunggu Konfirmasi atau Diproses.');
+                }
+                // FR-028: total pesanan yang sudah Lunas tidak boleh berubah tanpa pencatatan selisih (PAY-07 belum diputuskan).
+                if ($order->status_pembayaran === 'Lunas') {
+                    throw new DomainException('Pesanan sudah Lunas. Perubahan item ditangani manual agar selisih pembayaran tercatat.');
                 }
 
                 $items = $order->items()->get();
@@ -350,7 +358,8 @@ class Order extends Model
     // Dipanggil dalam transaksi pada baris yang sudah dikunci dan sudah memuat items.
     private function akhiri(string $status, string $catatan): void
     {
-        foreach ($this->items as $item) {
+        // Urut product_id: sama dengan urutan kunci di checkout dan ubahItem, agar tidak saling menunggu (deadlock).
+        foreach ($this->items->sortBy('product_id') as $item) {
             Product::whereKey($item->product_id)->increment('stok', $item->kuantitas);
         }
         $this->payments()->where('status', 'Menunggu')->update(['status' => $status === 'Kedaluwarsa' ? 'Kedaluwarsa' : 'Dibatalkan']);

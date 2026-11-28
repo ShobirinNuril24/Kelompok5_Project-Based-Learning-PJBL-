@@ -60,10 +60,19 @@ class Keranjang
         $isi = self::isi();
         $produk = Product::with('category')->whereIn('id', array_keys($isi))->get()->keyBy('id');
 
+        // FR-030: produk yang sudah dihapus admin dibuang dari sesi. Kalau dibiarkan, baris itu tidak
+        // tampil tetapi checkout selalu ditolak, dan pelanggan tidak punya cara menghapusnya.
+        $hilang = array_diff(array_keys($isi), $produk->keys()->all());
+        if ($hilang !== []) {
+            session([self::KUNCI => array_diff_key($isi, array_flip($hilang))]);
+            session()->now('err', count($hilang).' barang dihapus dari keranjang karena sudah tidak dijual.');
+            $isi = self::isi();
+        }
+
         return collect($isi)->map(function ($jumlah, $id) use ($produk) {
             $p = $produk->get($id);
             if (! $p) {
-                return null; // produk sudah dihapus admin
+                return null;
             }
 
             $masalah = match (true) {

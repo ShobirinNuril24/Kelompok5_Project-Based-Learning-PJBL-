@@ -42,10 +42,11 @@ class PesananController extends Controller
         return view('pelanggan.pesanan.show', ['order' => $order->refresh()->load('items')]);
     }
 
-    // Pelanggan hanya boleh membatalkan sebelum pesanan diproses. Selebihnya lewat WhatsApp ke admin.
+    // Pelanggan hanya boleh membatalkan sebelum pesanan diproses DAN sebelum ada pembayaran yang dicatat
+    // (FR-027). Pesanan yang sudah dibayar dibatalkan admin lewat WhatsApp agar pengembalian dana tertangani.
     public function batal(Order $order): RedirectResponse
     {
-        $berhasil = $order->batalkan('pelanggan', ['Menunggu Konfirmasi', 'Menunggu Pembayaran']);
+        $berhasil = $order->batalkan('pelanggan', ['Menunggu Konfirmasi', 'Menunggu Pembayaran'], ['Belum Dibayar']);
 
         return redirect()->route('pesanan.show', $order->public_token)->with(
             $berhasil ? 'ok' : 'err',
