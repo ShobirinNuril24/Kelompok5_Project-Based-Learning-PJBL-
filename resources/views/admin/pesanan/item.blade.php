@@ -11,7 +11,7 @@
     <div role="note" class="mt-4 rounded-lg bg-amber-100 px-4 py-3 text-sm text-amber-900 dark:bg-amber-900/40 dark:text-amber-200">
         Stok disesuaikan otomatis: menambah jumlah mengambil stok, mengurangi jumlah mengembalikan stok. Ubah hanya setelah pelanggan setuju lewat WhatsApp.
         @if ($order->status_pembayaran === 'Lunas')
-            <b>Pembayaran sudah Lunas</b>, jadi selisih total harus diselesaikan manual dengan pelanggan.
+            <b>Pembayaran sudah Lunas</b>: selisih total diselesaikan manual dengan pelanggan dan wajib dicatat di bawah.
         @endif
     </div>
 
@@ -65,7 +65,17 @@
                 <h3 class="font-extrabold">Ongkir</h3>
                 <label for="ongkir" class="mt-3 mb-1 block text-sm font-semibold">Ongkos kirim (Rp)</label>
                 <input id="ongkir" type="number" min="0" name="ongkir" value="{{ old('ongkir', $order->ongkir) }}" class="{{ $kelasInput }} w-48">
-                <p class="mt-1 text-xs text-teks-lemah">Tentukan setelah memeriksa jarak dan kesanggupan pengantaran, lalu sepakati dengan pelanggan lewat WhatsApp.</p>
+                <p class="mt-1 text-xs text-teks-lemah">Tentukan setelah memeriksa jarak dan kesanggupan pengantaran, lalu sepakati dengan pelanggan lewat WhatsApp.
+                    Ongkir otomatis Rp 0 bila subtotal barang mulai Rp {{ number_format(\App\Models\Order::gratisOngkirMinimal(), 0, ',', '.') }}.</p>
+            </section>
+        @endif
+
+        @if ($order->status_pembayaran === 'Lunas')
+            <section class="rounded-2xl border border-garis bg-kartu p-5">
+                <label for="catatan_selisih" class="font-extrabold">Penyelesaian selisih pembayaran (wajib)</label>
+                <textarea id="catatan_selisih" name="catatan_selisih" rows="2" maxlength="500" required class="{{ $kelasInput }} mt-3 w-full"
+                    placeholder="Contoh: selisih Rp 9.000 dikembalikan tunai saat pengambilan">{{ old('catatan_selisih') }}</textarea>
+                <p class="mt-1 text-xs text-teks-lemah">Total lama, total baru, dan selisihnya dicatat otomatis bersama catatan ini.</p>
             </section>
         @endif
 

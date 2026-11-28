@@ -18,7 +18,7 @@
         <div>
             <h2 class="text-2xl font-extrabold tracking-wide">{{ $order->nomor_pesanan }}</h2>
             <div class="mt-2 flex flex-wrap gap-2">
-                <x-badge :warna="$order->warnaStatus()">Pesanan: {{ $order->status_pesanan }}</x-badge>
+                <x-badge :warna="$order->warnaStatus()">Pesanan: {{ $order->labelStatus() }}</x-badge>
                 <x-badge :warna="$order->warnaPembayaran()">Pembayaran: {{ $order->status_pembayaran }}</x-badge>
             </div>
         </div>
@@ -96,7 +96,7 @@
                         <label for="status" class="sr-only">Status baru</label>
                         <select id="status" name="status" class="{{ $kelasInput }} min-w-0 flex-1">
                             @foreach ($opsiStatus as $s)
-                                <option value="{{ $s }}">{{ $s }}</option>
+                                <option value="{{ $s }}">{{ \App\Models\Order::label($s) }}</option>
                             @endforeach
                         </select>
                         <x-button type="submit">Simpan</x-button>

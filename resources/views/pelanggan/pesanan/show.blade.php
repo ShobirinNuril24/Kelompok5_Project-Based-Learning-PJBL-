@@ -27,7 +27,7 @@
                 <p class="text-sm text-teks-lemah">Nomor pesanan</p>
                 <h1 class="text-2xl font-extrabold tracking-wide">{{ $order->nomor_pesanan }}</h1>
                 <div class="mt-3 flex flex-wrap gap-2">
-                    <x-badge :warna="$order->warnaStatus()">Pesanan: {{ $order->status_pesanan }}</x-badge>
+                    <x-badge :warna="$order->warnaStatus()">Pesanan: {{ $order->labelStatus() }}</x-badge>
                     <x-badge :warna="$order->warnaPembayaran()">Pembayaran: {{ $order->status_pembayaran }}</x-badge>
                 </div>
                 <dl class="mt-5 grid gap-4 text-sm sm:grid-cols-2">

@@ -24,7 +24,8 @@ class LayoutPelangganTest extends TestCase
             ->assertSee('Toko Sepuluh')
             ->assertSee('Cek Status Pesanan')
             ->assertSee('https://wa.me/6281234567890', false)   // nomor 08xx dinormalisasi
-            ->assertSee('05.30–11.00 WIB');                      // jadwal Jumat dari database
+            ->assertSee('05.30–11.30 WIB')                       // jadwal dari database (D-5: semua hari sama)
+            ->assertDontSee('05.30–11.00 WIB');
     }
 
     public function test_halaman_menu_bisa_dibuka(): void

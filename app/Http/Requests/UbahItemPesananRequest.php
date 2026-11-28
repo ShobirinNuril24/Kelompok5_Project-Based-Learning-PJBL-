@@ -19,6 +19,7 @@ class UbahItemPesananRequest extends FormRequest
             'tambah_product_id' => ['nullable', 'exists:products,id'],
             'tambah_kuantitas' => ['nullable', 'required_with:tambah_product_id', 'integer', 'min:1', 'max:999'],
             'ongkir' => ['nullable', 'integer', 'min:0', 'max:1000000'],
+            'catatan_selisih' => ['nullable', 'string', 'max:500'], // wajib bila pesanan sudah Lunas (dicek di model)
             'disetujui' => ['accepted'], // perubahan wajib disetujui pelanggan secara eksplisit
         ];
     }
