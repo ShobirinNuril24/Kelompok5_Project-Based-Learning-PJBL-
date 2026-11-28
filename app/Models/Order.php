@@ -92,6 +92,16 @@ class Order extends Model
         return self::label($this->status_pesanan);
     }
 
+    // D-7: pesanan ambil di toko yang sudah Siap Diambil lebih dari 2 hari -> admin menghubungi pelanggan dulu.
+    // Catatan: memakai updated_at sebagai perkiraan waktu masuk status (tidak ada riwayat status terpisah).
+    public const BATAS_AMBIL_HARI = 2;
+
+    public function lewatBatasAmbil(): bool
+    {
+        return $this->status_pesanan === 'Siap Diambil'
+            && $this->updated_at?->lte(now()->subDays(self::BATAS_AMBIL_HARI));
+    }
+
     public function warnaStatus(): string
     {
         return match ($this->status_pesanan) {
@@ -161,7 +171,7 @@ class Order extends Model
                 $refund = $order->status_pembayaran === 'Lunas'
                     ? ' Pesanan sudah Lunas: kembalikan Rp '.number_format($order->total_harga, 0, ',', '.').' ke pelanggan secara manual.'
                     : '';
-                $order->akhiri('Dibatalkan', 'Dibatalkan oleh admin. Stok dikembalikan.'.$refund);
+                $order->akhiri('Dibatalkan', 'Dibatalkan oleh admin.'.$refund);
             } else {
                 $order->update(['status_pesanan' => $ke]);
             }
@@ -243,11 +253,11 @@ class Order extends Model
         });
     }
 
-    // ---------- Pembatalan dan kedaluwarsa (stok kembali SATU KALI) ----------
+    // ---------- Pembatalan dan kedaluwarsa ----------
 
     /**
      * Batalkan pesanan (pelanggan atau admin). Baris pesanan dikunci, jadi request ganda tidak
-     * mengembalikan stok dua kali. $statusBoleh dan $pembayaranBoleh membatasi status yang sah
+     * memproses pembatalan dua kali. $statusBoleh dan $pembayaranBoleh membatasi status yang sah
      * (dicek di dalam kunci, supaya tidak balapan dengan admin yang sedang mencatat pembayaran).
      */
     public function batalkan(string $oleh, ?array $statusBoleh = null, ?array $pembayaranBoleh = null): bool
@@ -264,7 +274,7 @@ class Order extends Model
             if ($pembayaranBoleh !== null && ! in_array($order->status_pembayaran, $pembayaranBoleh, true)) {
                 return false;
             }
-            $order->akhiri('Dibatalkan', "Dibatalkan oleh {$oleh}. Stok dikembalikan.");
+            $order->akhiri('Dibatalkan', "Dibatalkan oleh {$oleh}.");
 
             return true;
         });
@@ -278,7 +288,7 @@ class Order extends Model
             if ($order->status_pesanan !== 'Menunggu Pembayaran' || ! $order->batas_bayar_at || $order->batas_bayar_at->isFuture()) {
                 return false;
             }
-            $order->akhiri('Kedaluwarsa', 'Pembayaran tidak diterima sebelum batas waktu. Stok dikembalikan.');
+            $order->akhiri('Kedaluwarsa', 'Pembayaran tidak diterima sebelum batas waktu.');
 
             return true;
         });
@@ -299,8 +309,8 @@ class Order extends Model
     // ---------- Perubahan item dan total oleh admin (ORD §3.4) ----------
 
     /**
-     * $kuantitas = [id item => jumlah baru] (0 = hapus). Stok disesuaikan: tambah jumlah mengambil stok,
-     * kurang jumlah mengembalikan stok. Semua dalam satu transaksi; gagal = tidak ada yang berubah.
+     * $kuantitas = [id item => jumlah baru] (0 = hapus). Jumlah hanya boleh ditambah untuk produk yang Ada (D-3).
+     * Semua dalam satu transaksi; gagal = tidak ada yang berubah.
      */
     public function ubahItem(array $kuantitas, ?int $tambahId, int $tambahJumlah, int $ongkir, ?string $catatanSelisih = null): ?string
     {
@@ -331,10 +341,9 @@ class Order extends Model
                     }
 
                     $p = $produk[$item->product_id];
-                    if ($selisih > 0 && $p->stok < $selisih) {
-                        throw new DomainException("Stok {$p->nama_produk} tinggal {$p->stok}.");
+                    if ($selisih > 0 && ! $p->tersedia) {
+                        throw new DomainException("{$p->nama_produk} sedang habis, jumlahnya tidak bisa ditambah.");
                     }
-                    $selisih > 0 ? $p->decrement('stok', $selisih) : $p->increment('stok', -$selisih);
 
                     $baru === 0
                         ? $item->delete()
@@ -347,10 +356,9 @@ class Order extends Model
                     if ($items->contains('product_id', $tambahId)) {
                         throw new DomainException("{$p->nama_produk} sudah ada di pesanan. Ubah jumlahnya saja.");
                     }
-                    if (! $p->is_active || $p->stok < $tambahJumlah) {
-                        throw new DomainException("{$p->nama_produk} tidak tersedia sebanyak itu.");
+                    if (! $p->bisaDipesan()) {
+                        throw new DomainException("{$p->nama_produk} sedang tidak tersedia.");
                     }
-                    $p->decrement('stok', $tambahJumlah);
                     $order->items()->create([
                         'product_id' => $p->id,
                         'nama_produk_snapshot' => $p->nama_produk,
@@ -405,10 +413,7 @@ class Order extends Model
     // Dipanggil dalam transaksi pada baris yang sudah dikunci dan sudah memuat items.
     private function akhiri(string $status, string $catatan): void
     {
-        // Urut product_id: sama dengan urutan kunci di checkout dan ubahItem, agar tidak saling menunggu (deadlock).
-        foreach ($this->items->sortBy('product_id') as $item) {
-            Product::whereKey($item->product_id)->increment('stok', $item->kuantitas);
-        }
+        // D-3: tidak ada stok angka yang dikembalikan; admin mengatur Ada/Habis secara manual.
         $this->payments()->where('status', 'Menunggu')->update(['status' => $status === 'Kedaluwarsa' ? 'Kedaluwarsa' : 'Dibatalkan']);
         $this->update(['status_pesanan' => $status, 'catatan_admin' => $this->gabungCatatan($catatan)]);
     }

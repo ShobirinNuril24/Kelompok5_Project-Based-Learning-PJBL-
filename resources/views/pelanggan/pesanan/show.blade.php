@@ -85,7 +85,7 @@
                     @if (! ($toko->nama_bank && $toko->no_rekening) && ! $toko->gambar_qris)
                         <p class="mt-3">Hubungi admin lewat WhatsApp untuk informasi rekening atau QRIS.</p>
                     @endif
-                    <p class="mt-3 text-teks-lemah">Pembayaran dicek oleh admin. Pesanan otomatis kedaluwarsa jika tidak dibayar sebelum batas waktu, dan stoknya dilepas kembali.</p>
+                    <p class="mt-3 text-teks-lemah">Pembayaran dicek oleh admin. Pesanan otomatis kedaluwarsa jika tidak dibayar sebelum batas waktu.</p>
                 </div>
             @elseif ($order->status_pesanan === 'Menunggu Konfirmasi' && $order->metode_pembayaran === 'Transfer/QRIS')
                 <div class="rounded-2xl border border-garis bg-kartu p-5 text-sm text-teks-lemah">

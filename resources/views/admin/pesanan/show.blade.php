@@ -21,6 +21,11 @@
                 <x-badge :warna="$order->warnaStatus()">Pesanan: {{ $order->labelStatus() }}</x-badge>
                 <x-badge :warna="$order->warnaPembayaran()">Pembayaran: {{ $order->status_pembayaran }}</x-badge>
             </div>
+            @if ($order->lewatBatasAmbil())
+                <p role="note" class="mt-3 rounded-lg bg-red-100 px-3 py-2 text-sm text-red-900 dark:bg-red-900/40 dark:text-red-200">
+                    Pesanan belum diambil lebih dari {{ \App\Models\Order::BATAS_AMBIL_HARI }} hari. Hubungi pelanggan lewat WhatsApp dulu; batalkan hanya jika tetap tidak diambil.
+                </p>
+            @endif
         </div>
         <x-button varian="wa" :href="$order->waUrl($pesanWa)" target="_blank" rel="noopener"><x-icon nama="whatsapp" ukuran="size-4" /> Hubungi Pelanggan</x-button>
     </div>

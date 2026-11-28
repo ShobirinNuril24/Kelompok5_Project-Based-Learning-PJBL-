@@ -51,7 +51,7 @@
                                 <td class="px-3 py-2.5">{{ $o->metode_pengambilan }}</td>
                                 <td class="px-3 py-2.5">{{ $o->metode_pembayaran }}<br><x-badge :warna="$o->warnaPembayaran()">{{ $o->status_pembayaran }}</x-badge></td>
                                 <td class="whitespace-nowrap px-3 py-2.5 text-right tabular-nums">@rupiah($o->total_harga)</td>
-                                <td class="px-3 py-2.5"><x-badge :warna="$o->warnaStatus()">{{ $o->labelStatus() }}</x-badge></td>
+                                <td class="px-3 py-2.5"><x-badge :warna="$o->warnaStatus()">{{ $o->labelStatus() }}</x-badge>@if ($o->lewatBatasAmbil())<br><x-badge warna="bahaya">Belum diambil &gt; 2 hari</x-badge>@endif</td>
                                 <td class="whitespace-nowrap px-3 py-2.5 text-teks-lemah">{{ $o->created_at->format('d-m-Y H:i') }}</td>
                                 <td class="py-2.5 pl-3"><x-button :href="route('admin.pesanan.show', $o)" varian="garis" class="!px-3 !py-1.5">Detail</x-button></td>
                             </tr>

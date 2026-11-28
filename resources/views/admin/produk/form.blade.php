@@ -32,7 +32,14 @@
                 </div>
                 <x-input label="Satuan (kg, pouch, dus, ...)" name="satuan" :value="$produk->satuan" required maxlength="50" />
                 <x-input label="Harga (Rp)" name="harga" type="number" :value="$produk->harga" min="0" max="100000000" step="1" inputmode="numeric" required />
-                <x-input label="Stok" name="stok" type="number" :value="$produk->stok ?? 0" min="0" max="1000000" step="1" inputmode="numeric" required />
+                @php $ada = (bool) old('tersedia', $produk->tersedia ?? true); @endphp
+                <fieldset>
+                    <legend class="mb-1 block text-sm font-semibold">Ketersediaan</legend>
+                    <div class="flex gap-4 pt-2">
+                        <label class="flex items-center gap-2"><input type="radio" name="tersedia" value="1" @checked($ada) class="size-4 accent-[#F6C945]"> Ada</label>
+                        <label class="flex items-center gap-2"><input type="radio" name="tersedia" value="0" @checked(! $ada) class="size-4 accent-[#F6C945]"> Habis</label>
+                    </div>
+                </fieldset>
                 <div class="sm:col-span-2">
                     <label for="deskripsi" class="mb-1 block text-sm font-semibold">Deskripsi (opsional)</label>
                     <textarea id="deskripsi" name="deskripsi" rows="3" maxlength="2000" class="{{ $in }}">{{ old('deskripsi', $produk->deskripsi) }}</textarea>

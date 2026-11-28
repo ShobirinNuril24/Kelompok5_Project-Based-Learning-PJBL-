@@ -22,7 +22,7 @@ class CheckoutTest extends TestCase
         $this->withoutVite();
         $this->seed([TokoSeeder::class, KatalogSeeder::class]);
         Carbon::setTestNow(Carbon::parse('2026-11-23 08:00', 'Asia/Jakarta')); // Senin, toko buka
-        $this->produk = Product::where('slug', 'beras-pandan-wangi-5-kg')->first(); // stok 30, Rp 78.000
+        $this->produk = Product::where('slug', 'beras-pandan-wangi-5-kg')->first(); // Rp 78.000, tersedia (Ada)
     }
 
     protected function tearDown(): void
@@ -41,13 +41,15 @@ class CheckoutTest extends TestCase
         ], $ubah));
     }
 
-    public function test_checkout_tunai_mengurangi_stok_satu_kali(): void
+    // D-3: checkout memakai status Ada/Habis, bukan angka stok. Angka stok lama diabaikan dan tidak diubah.
+    public function test_checkout_tunai_memakai_status_ada_bukan_angka_stok(): void
     {
+        $this->produk->update(['stok' => 0, 'tersedia' => true]);
         $this->withSession(['keranjang' => [$this->produk->id => 2]])->kirim()->assertRedirect();
 
         $order = Order::first();
         $this->assertNotNull($order);
-        $this->assertSame(28, $this->produk->fresh()->stok);
+        $this->assertSame(0, $this->produk->fresh()->stok);
         $this->assertSame(156000, $order->total_harga);
         $this->assertSame('Menunggu Konfirmasi', $order->status_pesanan);
         $this->assertSame('Belum Dibayar', $order->status_pembayaran);
@@ -66,7 +68,6 @@ class CheckoutTest extends TestCase
             ->assertSessionHas('toko_tutup');
 
         $this->assertSame(0, Order::count());
-        $this->assertSame(30, $this->produk->fresh()->stok);
     }
 
     public function test_antar_tanpa_alamat_ditolak(): void
@@ -78,27 +79,37 @@ class CheckoutTest extends TestCase
         $this->assertSame(0, Order::count());
     }
 
-    public function test_stok_kurang_ditolak_dan_stok_tidak_berubah(): void
+    // D-3: barang yang ditandai Habis setelah masuk keranjang ditolak saat checkout; tidak ada pesanan tersimpan.
+    public function test_produk_habis_ditolak_saat_checkout(): void
     {
-        $this->withSession(['keranjang' => [$this->produk->id => 99]])->kirim()
+        $this->produk->update(['tersedia' => false]);
+        $this->withSession(['keranjang' => [$this->produk->id => 2]])->kirim()
             ->assertSessionHasErrors('keranjang');
 
         $this->assertSame(0, Order::count());
-        $this->assertSame(30, $this->produk->fresh()->stok);
+        $this->get('/keranjang')->assertSee('Sedang habis.');
     }
 
-    public function test_pembatalan_mengembalikan_stok_hanya_satu_kali(): void
+    // D-3: produk Habis tidak bisa dimasukkan ke keranjang.
+    public function test_produk_habis_tidak_bisa_masuk_keranjang(): void
+    {
+        $this->produk->update(['tersedia' => false]);
+        $this->post('/keranjang', ['produk_id' => $this->produk->id])->assertSessionHas('err');
+
+        $this->assertSame([], session('keranjang', []));
+    }
+
+    public function test_pembatalan_hanya_diproses_satu_kali(): void
     {
         $this->withSession(['keranjang' => [$this->produk->id => 2]])->kirim();
         $order = Order::first();
-        $this->assertSame(28, $this->produk->fresh()->stok);
 
         $this->post('/pesanan/'.$order->public_token.'/batal');
-        $this->assertSame(30, $this->produk->fresh()->stok);
         $this->assertSame('Dibatalkan', $order->fresh()->status_pesanan);
+        $catatan = $order->fresh()->catatan_admin;
 
-        $this->post('/pesanan/'.$order->public_token.'/batal'); // request diulang
-        $this->assertSame(30, $this->produk->fresh()->stok);     // stok tidak bertambah lagi
+        $this->post('/pesanan/'.$order->public_token.'/batal')->assertSessionHas('err'); // request diulang
+        $this->assertSame($catatan, $order->fresh()->catatan_admin);                      // tidak diproses lagi
     }
 
     public function test_transfer_ambil_di_toko_langsung_menunggu_pembayaran(): void
@@ -123,24 +134,21 @@ class CheckoutTest extends TestCase
         $this->assertSame(0, $order->payments()->count());
     }
 
-    public function test_pesanan_kedaluwarsa_mengembalikan_stok_hanya_satu_kali(): void
+    public function test_pesanan_kedaluwarsa_diproses_satu_kali(): void
     {
         $this->withSession(['keranjang' => [$this->produk->id => 2]])->kirim(['metode_pembayaran' => 'Transfer/QRIS']);
         $order = Order::first();
-        $this->assertSame(28, $this->produk->fresh()->stok);
 
         Carbon::setTestNow(now()->addMinutes(30)); // belum lewat batas bayar
         $this->assertSame(0, Order::prosesKedaluwarsa());
-        $this->assertSame(28, $this->produk->fresh()->stok);
+        $this->assertSame('Menunggu Pembayaran', $order->fresh()->status_pesanan);
 
         Carbon::setTestNow(now()->addMinutes(31)); // lewat batas bayar
         $this->assertSame(1, Order::prosesKedaluwarsa());
-        $this->assertSame(30, $this->produk->fresh()->stok);
         $this->assertSame('Kedaluwarsa', $order->fresh()->status_pesanan);
         $this->assertDatabaseHas('payments', ['order_id' => $order->id, 'status' => 'Kedaluwarsa']);
 
-        $this->assertSame(0, Order::prosesKedaluwarsa()); // diulang: stok tidak bertambah lagi
-        $this->assertSame(30, $this->produk->fresh()->stok);
+        $this->assertSame(0, Order::prosesKedaluwarsa()); // diulang: tidak diproses lagi
     }
 
     public function test_pesanan_kedaluwarsa_tidak_bisa_dianggap_lunas_atau_dibatalkan(): void
@@ -151,8 +159,8 @@ class CheckoutTest extends TestCase
         Order::prosesKedaluwarsa();
 
         $this->assertNotNull($order->fresh()->tandaiLunas());     // ditolak
-        $this->assertFalse($order->fresh()->batalkan('admin'));   // stok tidak dikembalikan dua kali
-        $this->assertSame(30, $this->produk->fresh()->stok);
+        $this->assertFalse($order->fresh()->batalkan('admin'));   // status akhir tidak diproses lagi
+        $this->assertSame('Kedaluwarsa', $order->fresh()->status_pesanan);
         $this->assertSame('Belum Dibayar', $order->fresh()->status_pembayaran);
     }
 
@@ -168,7 +176,6 @@ class CheckoutTest extends TestCase
 
         $this->assertSame('Menunggu Konfirmasi', $order->fresh()->status_pesanan);
         $this->assertSame('Lunas', $order->fresh()->status_pembayaran);
-        $this->assertSame(28, $this->produk->fresh()->stok); // stok tidak dikembalikan
         $this->get('/pesanan/'.$order->public_token)->assertDontSee('Ajukan Pembatalan');
     }
 
@@ -181,7 +188,6 @@ class CheckoutTest extends TestCase
         $this->post('/pesanan/'.$order->public_token.'/batal')->assertSessionHas('err');
 
         $this->assertSame('Diproses', $order->fresh()->status_pesanan);
-        $this->assertSame(28, $this->produk->fresh()->stok);
     }
 
     public function test_produk_yang_sudah_dihapus_dibuang_dari_keranjang_dan_checkout_tetap_bisa(): void
@@ -198,7 +204,7 @@ class CheckoutTest extends TestCase
         $this->kirim()->assertRedirect();
 
         $this->assertSame(1, Order::count());
-        $this->assertSame(29, $this->produk->fresh()->stok);
+        $this->assertSame(1, Order::first()->items()->count());
     }
 
     public function test_katalog_menolak_parameter_array_dan_memperlakukan_wildcard_sebagai_teks(): void

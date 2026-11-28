@@ -50,7 +50,7 @@ class PesananController extends Controller
 
         return redirect()->route('pesanan.show', $order->public_token)->with(
             $berhasil ? 'ok' : 'err',
-            $berhasil ? 'Pesanan dibatalkan dan stok dikembalikan.' : 'Pesanan ini tidak bisa dibatalkan dari sini. Silakan hubungi admin lewat WhatsApp.'
+            $berhasil ? 'Pesanan dibatalkan.' : 'Pesanan ini tidak bisa dibatalkan dari sini. Silakan hubungi admin lewat WhatsApp.'
         );
     }
 }

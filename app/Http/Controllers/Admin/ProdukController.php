@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Product;
-use App\Models\StoreSetting;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -19,9 +18,8 @@ class ProdukController extends Controller
         $d = $request->validate([
             'q' => ['nullable', 'string', 'max:100'],
             'kategori' => ['nullable', 'integer'],
-            'status' => ['nullable', Rule::in(['aktif', 'nonaktif', 'habis', 'menipis'])],
+            'status' => ['nullable', Rule::in(['aktif', 'nonaktif', 'habis'])],
         ]);
-        $ambang = StoreSetting::ambil()->ambang_stok_menipis;
 
         $produk = Product::with('category')
             ->when($d['q'] ?? null, fn ($q, $cari) => $q->where('nama_produk', 'like', "%{$cari}%"))
@@ -29,15 +27,13 @@ class ProdukController extends Controller
             ->when($d['status'] ?? null, fn ($q, $s) => match ($s) {
                 'aktif' => $q->where('is_active', true),
                 'nonaktif' => $q->where('is_active', false),
-                'habis' => $q->where('stok', 0),
-                'menipis' => $q->where('stok', '>', 0)->where('stok', '<=', $ambang),
+                'habis' => $q->where('tersedia', false),
             })
             ->orderBy('nama_produk')->paginate(15)->withQueryString();
 
         return view('admin.produk.index', [
             'produk' => $produk,
             'kategori' => Category::orderBy('nama_kategori')->get(),
-            'ambang' => $ambang,
         ]);
     }
 
@@ -108,12 +104,15 @@ class ProdukController extends Controller
             'deskripsi' => ['nullable', 'string', 'max:2000'],
             'satuan' => ['required', 'string', 'max:50'],
             'harga' => ['required', 'integer', 'min:0', 'max:100000000'],
-            'stok' => ['required', 'integer', 'min:0', 'max:1000000'],
             'gambar' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
         ], [], ['category_id' => 'kategori', 'nama_produk' => 'nama produk']);
         unset($data['gambar']); // file disimpan terpisah oleh store()/update()
 
-        return $data + ['is_active' => $request->boolean('is_active'), 'is_unggulan' => $request->boolean('is_unggulan')];
+        return $data + [
+            'is_active' => $request->boolean('is_active'),
+            'is_unggulan' => $request->boolean('is_unggulan'),
+            'tersedia' => $request->boolean('tersedia'), // D-3: Ada/Habis
+        ];
     }
 
     private function hapusGambar(Product $produk): void
